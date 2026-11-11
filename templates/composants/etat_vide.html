@@ -1,0 +1,8 @@
+{% comment %}
+État vide. Paramètres : titre, message (facultatif), url_action et libelle_action (facultatifs).
+{% endcomment %}
+<div class="etat-vide">
+  <p class="text-lg font-semibold text-nuit-900">{{ titre }}</p>
+  {% if message %}<p class="mt-1 text-gris-600">{{ message }}</p>{% endif %}
+  {% if url_action %}<p class="mt-4">{% include "composants/bouton.html" with url=url_action libelle=libelle_action %}</p>{% endif %}
+</div>

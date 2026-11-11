@@ -12,20 +12,28 @@
   <a href="#contenu" class="lien-evitement">Aller au contenu</a>
 
   <header class="bg-nuit-900 text-white">
-    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
       <a href="{% url 'accueil' %}" class="text-lg font-semibold text-white no-underline">
         SIGAPS<span class="sr-only"> — accueil</span>
       </a>
-      <nav aria-label="Navigation principale">
-        <ul class="flex flex-wrap items-center gap-4 text-sm">
-          {% block navigation %}
-          <li><a href="{% url 'accueil' %}" class="text-white">Rechercher</a></li>
-          {% if user.is_authenticated %}
-          <li><span class="text-nuit-100">{{ user }}</span></li>
-          {% endif %}
-          {% endblock %}
+      <nav aria-label="Navigation principale" class="flex-1">
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          {% for entree in menu_principal %}
+          <li><a href="{{ entree.url }}" class="text-white{% if entree.actif %} font-semibold underline{% endif %}"{% if entree.actif %} aria-current="page"{% endif %}>{{ entree.libelle }}</a></li>
+          {% endfor %}
         </ul>
       </nav>
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        {% if user.is_authenticated %}
+        <span class="text-nuit-100">{{ user }}</span>
+        <form method="post" action="{% url 'comptes:deconnexion' %}">
+          {% csrf_token %}
+          <button type="submit" class="cursor-pointer text-white underline">Se déconnecter</button>
+        </form>
+        {% else %}
+        <a href="{% url 'comptes:connexion' %}" class="text-white">Se connecter</a>
+        {% endif %}
+      </div>
     </div>
   </header>
 
@@ -50,6 +58,9 @@
       SIGAPS — Gestion, validation et archivage des productions académiques
     </div>
   </footer>
+
+  {% include "composants/modale_confirmation.html" %}
+  <script src="{% static 'js/modale.js' %}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

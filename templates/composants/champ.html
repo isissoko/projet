@@ -1,0 +1,27 @@
+{% comment %}
+Champ de formulaire accessible.
+Usage : {% include "composants/champ.html" with champ=form.email %}
+Les identifiants _helptext et _error correspondent à l'aria-describedby généré par Django 5.2.
+{% endcomment %}
+{% if champ.is_hidden %}{{ champ }}{% elif champ.use_fieldset %}
+<fieldset class="champ"{% if champ.help_text or champ.errors %} aria-describedby="{% if champ.help_text %}{{ champ.auto_id }}_helptext {% endif %}{% if champ.errors %}{{ champ.auto_id }}_error{% endif %}"{% endif %}>
+  <legend class="champ-libelle">{{ champ.label }}{% if champ.field.required %} <span class="text-red-700" aria-hidden="true">*</span>{% endif %}</legend>
+  <div class="champ-choix">{{ champ }}</div>
+  {% if champ.help_text %}<p id="{{ champ.auto_id }}_helptext" class="champ-aide">{{ champ.help_text }}</p>{% endif %}
+  {% if champ.errors %}<div id="{{ champ.auto_id }}_error" class="champ-erreur">{% for e in champ.errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+</fieldset>
+{% elif champ.widget_type == "checkbox" %}
+<div class="champ champ-case">
+  {{ champ }}
+  <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+  {% if champ.help_text %}<p id="{{ champ.auto_id }}_helptext" class="champ-aide w-full">{{ champ.help_text }}</p>{% endif %}
+  {% if champ.errors %}<div id="{{ champ.auto_id }}_error" class="champ-erreur w-full">{% for e in champ.errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+</div>
+{% else %}
+<div class="champ">
+  <label for="{{ champ.id_for_label }}" class="champ-libelle">{{ champ.label }}{% if champ.field.required %} <span class="text-red-700" aria-hidden="true">*</span>{% endif %}</label>
+  {{ champ }}
+  {% if champ.help_text %}<p id="{{ champ.auto_id }}_helptext" class="champ-aide">{{ champ.help_text }}</p>{% endif %}
+  {% if champ.errors %}<div id="{{ champ.auto_id }}_error" class="champ-erreur">{% for e in champ.errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+</div>
+{% endif %}

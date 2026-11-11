@@ -49,4 +49,130 @@
     @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50
       focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-nuit-900 focus:shadow;
   }
+
+  /* Titres et cartes */
+  .titre-page {
+    @apply text-2xl font-bold text-nuit-900;
+  }
+  .carte {
+    @apply rounded-lg border border-gris-300 bg-white p-4 sm:p-6;
+  }
+
+  /* Boutons */
+  .bouton {
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-md
+      border px-4 py-2 text-sm font-semibold no-underline transition-colors
+      hover:no-underline disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .bouton-principal {
+    @apply border-nuit-800 bg-nuit-800 text-white hover:bg-nuit-900;
+  }
+  .bouton-secondaire {
+    @apply border-gris-300 bg-white text-nuit-800 hover:bg-gris-100;
+  }
+  .bouton-danger {
+    @apply border-red-700 bg-red-700 text-white hover:bg-red-800;
+  }
+  .bouton-discret {
+    @apply min-h-9 border-transparent bg-transparent px-2 text-nuit-700 underline hover:bg-gris-100;
+  }
+
+  /* Champs de formulaire */
+  .champ {
+    @apply mb-4 flex flex-col gap-1;
+  }
+  .champ-libelle {
+    @apply text-sm font-semibold text-gris-800;
+  }
+  .champ input:not([type="checkbox"], [type="radio"]),
+  .champ select,
+  .champ textarea {
+    @apply w-full rounded-md border border-gris-500 bg-white px-3 py-2 text-base text-gris-800;
+  }
+  .champ [aria-invalid="true"] {
+    @apply border-red-700 bg-red-50;
+  }
+  .champ-case {
+    @apply flex-row flex-wrap items-center gap-2;
+  }
+  .champ input[type="checkbox"],
+  .champ input[type="radio"] {
+    @apply size-5 accent-nuit-800;
+  }
+  .champ-choix > div {
+    @apply flex flex-wrap gap-x-6 gap-y-2;
+  }
+  .champ-choix label {
+    @apply inline-flex items-center gap-2;
+  }
+  .champ-aide {
+    @apply text-sm text-gris-600;
+  }
+  .champ-erreur {
+    @apply text-sm font-semibold text-red-700;
+  }
+
+  /* Alertes */
+  .alerte {
+    @apply mb-4 rounded border-l-4 px-4 py-3;
+  }
+  .alerte-erreur {
+    @apply border-red-700 bg-red-50 text-red-900;
+  }
+  .alerte-info {
+    @apply border-nuit-500 bg-nuit-50 text-nuit-900;
+  }
+
+  /* Tableaux */
+  .tableau-conteneur {
+    @apply overflow-x-auto rounded-lg border border-gris-300 bg-white;
+  }
+  .tableau {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .tableau thead th {
+    @apply bg-gris-100 px-3 py-2 font-semibold text-gris-800;
+  }
+  .tableau tbody th,
+  .tableau tbody td {
+    @apply border-t border-gris-100 px-3 py-2 align-top;
+  }
+  .tableau tbody th {
+    @apply font-semibold text-nuit-900;
+  }
+  .ligne-inactive {
+    @apply bg-gris-50 text-gris-600;
+  }
+  .tableau-actions {
+    @apply whitespace-nowrap text-right;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-block rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+  .badge-neutre {
+    @apply bg-nuit-50 text-nuit-800;
+  }
+  .badge-accent {
+    @apply bg-accent-100 text-accent-700;
+  }
+  .badge-inactif {
+    @apply bg-gris-100 text-gris-600;
+  }
+
+  /* Pagination, état vide, modale */
+  .pagination {
+    @apply mt-4 flex flex-wrap items-center justify-between gap-3 text-sm;
+  }
+  .pagination-inactif {
+    @apply text-gris-500;
+  }
+  .etat-vide {
+    @apply rounded-lg border border-dashed border-gris-300 bg-white px-4 py-10 text-center;
+  }
+  .modale {
+    @apply m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-gris-300 p-6 shadow-xl
+      backdrop:bg-nuit-900/50;
+  }
 }

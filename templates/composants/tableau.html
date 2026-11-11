@@ -1,0 +1,27 @@
+{% comment %}
+Tableau (défilement horizontal sur petit écran).
+Paramètres : legende (caption), entetes (liste de libellés), lignes (liste de couples
+(objet, [cellules])), gabarit_actions (facultatif : gabarit inclus avec « element » pour
+la dernière colonne). La première cellule est un en-tête de ligne (th scope="row").
+{% endcomment %}
+<div class="tableau-conteneur">
+  <table class="tableau">
+    <caption class="sr-only">{{ legende }}</caption>
+    <thead>
+      <tr>
+        {% for entete in entetes %}<th scope="col">{{ entete }}</th>{% endfor %}
+        {% if gabarit_actions %}<th scope="col"><span class="sr-only">Actions</span></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for element, cellules in lignes %}
+      <tr{% if element.actif is False or element.is_active is False %} class="ligne-inactive"{% endif %}>
+        {% for cellule in cellules %}
+        {% if forloop.first %}<th scope="row">{{ cellule|default:"—" }}</th>{% else %}<td>{{ cellule|default:"—" }}</td>{% endif %}
+        {% endfor %}
+        {% if gabarit_actions %}<td class="tableau-actions">{% include gabarit_actions with element=element %}</td>{% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

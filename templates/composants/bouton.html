@@ -1,0 +1,10 @@
+{% comment %}
+Bouton ou lien-bouton.
+Paramètres : libelle (obligatoire), url (lien si fourni), type (submit par défaut),
+variante (principal | secondaire | danger | discret), nom / valeur (attributs name / value).
+{% endcomment %}
+{% if url %}
+<a href="{{ url }}" class="bouton {% if variante == 'secondaire' %}bouton-secondaire{% elif variante == 'danger' %}bouton-danger{% elif variante == 'discret' %}bouton-discret{% else %}bouton-principal{% endif %}">{{ libelle }}</a>
+{% else %}
+<button type="{{ type|default:'submit' }}"{% if nom %} name="{{ nom }}" value="{{ valeur }}"{% endif %} class="bouton {% if variante == 'secondaire' %}bouton-secondaire{% elif variante == 'danger' %}bouton-danger{% elif variante == 'discret' %}bouton-discret{% else %}bouton-principal{% endif %}">{{ libelle }}</button>
+{% endif %}

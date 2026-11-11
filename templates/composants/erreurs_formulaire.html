@@ -1,0 +1,8 @@
+{% if form.non_field_errors or form.errors %}
+<div class="alerte alerte-erreur" role="alert" tabindex="-1" id="erreurs-formulaire">
+  <p class="font-semibold">Le formulaire contient des erreurs.</p>
+  {% if form.non_field_errors %}
+  <ul class="mt-1 list-disc pl-5">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+</div>
+{% endif %}

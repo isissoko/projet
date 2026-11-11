@@ -1,0 +1,14 @@
+{% comment %}
+Modale de confirmation, incluse une seule fois dans base.html.
+Tout formulaire portant data-confirmation="Message…" (et éventuellement
+data-confirmation-bouton="Désactiver") l'ouvre avant d'être envoyé (static/js/modale.js).
+Sans JavaScript, le formulaire est envoyé directement.
+{% endcomment %}
+<dialog id="modale-confirmation" class="modale" aria-labelledby="modale-titre" aria-describedby="modale-message">
+  <h2 id="modale-titre" class="text-lg font-semibold text-nuit-900">Confirmation</h2>
+  <p id="modale-message" class="mt-2 text-gris-800" data-modale-message></p>
+  <div class="mt-6 flex flex-wrap justify-end gap-3">
+    <form method="dialog"><button type="submit" class="bouton bouton-secondaire">Annuler</button></form>
+    <button type="button" class="bouton bouton-danger" data-modale-confirmer>Confirmer</button>
+  </div>
+</dialog>

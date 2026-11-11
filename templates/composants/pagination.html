@@ -1,0 +1,14 @@
+{% comment %}
+Pagination. Paramètres : page_obj, parametres (chaîne de requête sans « page »).
+{% endcomment %}
+{% if page_obj.has_other_pages %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page_obj.has_previous %}
+  <a href="?{% if parametres %}{{ parametres }}&amp;{% endif %}page={{ page_obj.previous_page_number }}" rel="prev">← Précédent</a>
+  {% else %}<span aria-hidden="true" class="pagination-inactif">← Précédent</span>{% endif %}
+  <span aria-current="page">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?{% if parametres %}{{ parametres }}&amp;{% endif %}page={{ page_obj.next_page_number }}" rel="next">Suivant →</a>
+  {% else %}<span aria-hidden="true" class="pagination-inactif">Suivant →</span>{% endif %}
+</nav>
+{% endif %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titre %}Accès refusé{% endblock %}
+{% block contenu %}
+<div class="mx-auto max-w-lg">
+  <div class="carte">
+    <p class="text-sm font-semibold text-accent-700">Erreur 403</p>
+    <h1 class="titre-page mt-1">Accès refusé</h1>
+    <p class="mt-3 text-gris-800">Votre compte n'a pas le rôle nécessaire pour accéder à cette page.</p>
+    <p class="mt-1 text-sm text-gris-600">Si vous pensez qu'il s'agit d'une erreur, contactez l'administrateur de la plateforme.</p>
+    <p class="mt-4">{% url 'accueil' as url_accueil %}{% include "composants/bouton.html" with url=url_accueil libelle="Retour à l'accueil" variante="secondaire" %}</p>
+  </div>
+</div>
+{% endblock %}
