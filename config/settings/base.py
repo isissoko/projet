@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     # Applications SIGAPS
     "referentiel",
     "comptes",
+    "productions",
 ]
 
 MIDDLEWARE = [
@@ -37,6 +38,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "productions.middleware.TransitionInterditeMiddleware",
     # django-axes doit rester le dernier middleware.
     "axes.middleware.AxesMiddleware",
 ]
@@ -121,8 +123,8 @@ STOCKAGE_PRIVE_RACINE = BASE_DIR / env("STOCKAGE_PRIVE_RACINE", default="prive")
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "prive": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-        "OPTIONS": {"location": STOCKAGE_PRIVE_RACINE, "base_url": None},
+        "BACKEND": "productions.stockage.StockagePrive",
+        "OPTIONS": {"location": STOCKAGE_PRIVE_RACINE},
     },
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }

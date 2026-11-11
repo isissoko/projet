@@ -2,6 +2,7 @@
 
 import pytest
 from django.conf import settings
+from django.core.files.storage import storages
 from django.db import connection
 from django.urls import reverse
 from django.utils import formats, timezone
@@ -25,8 +26,11 @@ def test_format_de_date_francais():
 
 
 def test_stockage_prive_sans_url_publique():
-    assert settings.STORAGES["prive"]["OPTIONS"]["base_url"] is None
+    stockage = storages["prive"]
+    with pytest.raises(ValueError):
+        stockage.url("versions/x.pdf")
     assert str(settings.STOCKAGE_PRIVE_RACINE) != str(settings.MEDIA_ROOT)
+    assert not str(stockage.location).startswith(str(settings.MEDIA_ROOT))
 
 
 @pytest.mark.django_db
