@@ -1,0 +1,7 @@
+{% comment %}Motif de la dernière demande de corrections. Paramètre : motif (AvisEncadrement).{% endcomment %}
+{% if motif %}
+<div class="alerte border-accent-600 bg-accent-100 text-gris-800" role="note" aria-labelledby="titre-motif">
+  <p id="titre-motif" class="font-semibold text-accent-700">Corrections demandées par {{ motif.encadrement.enseignant.utilisateur }} le {{ motif.date|date:"j F Y" }} (version {{ motif.version.numero }})</p>
+  <p class="mt-1 whitespace-pre-line">{{ motif.commentaire }}</p>
+</div>
+{% endif %}

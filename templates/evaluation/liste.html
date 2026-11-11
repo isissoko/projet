@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titre %}Travaux à évaluer{% endblock %}
+{% block contenu %}
+<h1 class="titre-page mb-4">Travaux à évaluer</h1>
+
+<nav aria-label="Filtrer les travaux" class="mb-4">
+  <ul class="flex flex-wrap gap-2">
+    {% for o in onglets %}
+    <li><a href="?onglet={{ o.cle }}" class="bouton {% if o.actif %}bouton-principal{% else %}bouton-secondaire{% endif %}"{% if o.actif %} aria-current="page"{% endif %}>{{ o.libelle }} <span class="badge {% if o.actif %}bg-white text-nuit-900{% else %}badge-neutre{% endif %}">{{ o.nombre }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{% if travaux %}
+<ul class="grid gap-4 sm:grid-cols-2">
+  {% for t in travaux %}
+  <li>
+    <article class="carte flex h-full flex-col gap-2">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="badge badge-neutre">{{ t.get_type_production_display }}</span>
+        {% include "composants/badge_statut.html" with production=t %}
+        <span class="badge {% if t.role_encadrement == 'DIRECTEUR' %}badge-accent{% else %}badge-neutre{% endif %}">{% if t.role_encadrement == 'DIRECTEUR' %}Vous dirigez ce travail{% else %}Vous co-dirigez ce travail{% endif %}</span>
+      </div>
+      <h2 class="text-base font-semibold leading-snug"><a href="{% url 'evaluation:ecran' t.pk %}">{{ t.titre }}</a></h2>
+      {% if t.date_soumission %}<p class="text-sm text-gris-600">Soumis le {{ t.date_soumission|date:"j F Y" }}</p>{% endif %}
+      {% if t.statut == "SOUMIS" %}
+      <p class="mt-auto text-sm font-semibold {% if t.avis_donne %}text-gris-600{% else %}text-accent-700{% endif %}">{% if t.avis_donne %}Avis déjà donné sur la version courante{% else %}En attente de votre avis{% endif %}</p>
+      {% endif %}
+    </article>
+  </li>
+  {% endfor %}
+</ul>
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun travail dans cette catégorie" message="Les travaux que vous encadrez apparaissent ici après leur soumission." %}
+{% endif %}
+{% endblock %}

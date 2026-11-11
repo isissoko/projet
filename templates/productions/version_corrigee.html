@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static sigaps_formats %}
+{% block titre %}Version corrigée{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm"><a href="{% url 'productions:detail' production.pk %}">← Retour au dépôt</a></p>
+<h1 class="titre-page mb-1">Déposer la version corrigée</h1>
+<p class="mb-4 text-gris-600">{{ production.titre }}</p>
+
+{% include "productions/_motif.html" %}
+{% include "composants/erreurs_formulaire.html" %}
+
+<section class="carte max-w-2xl" aria-labelledby="titre-envoi">
+  <h2 id="titre-envoi" class="mb-1 text-lg font-semibold text-nuit-900">Nouvelle version</h2>
+  {% if version %}<p class="mb-3 text-sm text-gris-600">Version actuelle : n° {{ version.numero }} ({{ version.taille|taille }}). La version corrigée portera le n° {{ version.numero|add:1 }} ; les précédentes sont conservées.</p>{% endif %}
+  <form method="post" enctype="multipart/form-data" novalidate
+        data-confirmation="Envoyer la version corrigée ? Le travail sera renvoyé pour évaluation." data-confirmation-bouton="Envoyer">
+    {% csrf_token %}
+    {% include "composants/champ.html" with champ=form.fichier %}
+    <p id="apercu-fichier" class="mb-4 text-sm" aria-live="polite" hidden></p>
+    {% include "composants/champ.html" with champ=form.note %}
+    {% include "composants/bouton.html" with libelle="Envoyer la version corrigée" %}
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/fichier.js' %}" defer></script>{% endblock %}

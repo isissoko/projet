@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titre %}{{ production.titre|truncatechars:60 }}{% endblock %}
 {% block contenu %}
-<p class="mb-2 text-sm"><a href="{% url 'productions:mes_depots' %}">← Mes dépôts</a></p>
+<p class="mb-2 text-sm">{% if est_auteur %}<a href="{% url 'productions:mes_depots' %}">← Mes dépôts</a>{% elif evaluable %}<a href="{% url 'evaluation:liste' %}">← Travaux à évaluer</a>{% else %}<a href="{% url 'accueil' %}">← Accueil</a>{% endif %}</p>
 <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
   <div>
     <div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
@@ -10,8 +10,8 @@
     </div>
     <h1 class="titre-page">{{ production.titre }}</h1>
   </div>
-  {% if modifiable %}
   <div class="flex flex-wrap gap-2">
+    {% if modifiable %}
     {% url 'productions:etape1' production.pk as url_modifier %}{% include "composants/bouton.html" with url=url_modifier libelle="Modifier" variante="secondaire" %}
     {% url 'productions:etape5' production.pk as url_soumettre %}{% include "composants/bouton.html" with url=url_soumettre libelle="Soumettre" %}
     <form method="post" action="{% url 'productions:supprimer' production.pk %}"
@@ -19,11 +19,18 @@
       {% csrf_token %}
       <button type="submit" class="bouton bouton-danger">Supprimer</button>
     </form>
+    {% endif %}
+    {% if correction_attendue %}
+    {% url 'productions:version_corrigee' production.pk as url_correction %}{% include "composants/bouton.html" with url=url_correction libelle="Déposer la version corrigée" %}
+    {% endif %}
+    {% if evaluable and production.statut == "SOUMIS" %}
+    {% url 'evaluation:ecran' production.pk as url_eval %}{% include "composants/bouton.html" with url=url_eval libelle="Évaluer" %}
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {% if modifiable and manquants %}{% include "productions/_manquants.html" with production=None %}{% endif %}
+{% include "productions/_motif.html" %}
 
 <div class="grid gap-6 lg:grid-cols-3">
   <div class="space-y-6 lg:col-span-2">
@@ -35,6 +42,12 @@
       <h2 id="titre-versions" class="mb-2 text-lg font-semibold text-nuit-900">Versions du document</h2>
       {% if versions %}{% include "productions/_versions.html" %}{% else %}{% include "composants/etat_vide.html" with titre="Aucun fichier déposé" %}{% endif %}
     </section>
+    {% if production.statut != "BROUILLON" %}
+    <section aria-labelledby="titre-avis">
+      <h2 id="titre-avis" class="mb-2 text-lg font-semibold text-nuit-900">Avis des encadrants</h2>
+      {% include "productions/_avis.html" %}
+    </section>
+    {% endif %}
   </div>
   <section class="carte h-fit" aria-labelledby="titre-chronologie">
     <h2 id="titre-chronologie" class="mb-3 text-lg font-semibold text-nuit-900">Chronologie</h2>

@@ -1,0 +1,18 @@
+{% comment %}Historique des avis d'encadrement. Paramètre : avis.{% endcomment %}
+{% if avis %}
+<ol class="space-y-3">
+  {% for a in avis %}
+  <li class="rounded border border-gris-300 bg-white px-4 py-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="badge {% if a.avis == 'FAVORABLE' %}bg-green-100 text-green-900{% elif a.avis == 'DEFAVORABLE' %}bg-red-100 text-red-900{% else %}bg-accent-100 text-accent-700{% endif %}">{{ a.get_avis_display }}</span>
+      <strong class="text-nuit-900">{{ a.encadrement.enseignant.utilisateur }}</strong>
+      <span class="text-sm text-gris-600">{{ a.encadrement.get_role_display|lower }}{% if not a.est_du_directeur %} — avis consultatif{% endif %}</span>
+    </div>
+    <p class="mt-1 text-sm text-gris-600">Version {{ a.version.numero }} · <time datetime="{{ a.date|date:'c' }}">{{ a.date|date:"j F Y à H:i" }}</time></p>
+    {% if a.commentaire %}<p class="mt-2 whitespace-pre-line text-gris-800">{{ a.commentaire }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun avis pour l'instant" %}
+{% endif %}
