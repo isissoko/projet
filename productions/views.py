@@ -3,13 +3,15 @@
 from functools import reduce
 from operator import and_
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django.http import Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.functional import cached_property
+from django.utils.http import content_disposition_header
 from django.views import View
 from django.views.generic import FormView, ListView, TemplateView
 
@@ -25,8 +27,9 @@ from .forms import (
     FichierForm,
     MetadonneesForm,
     RechercheEnseignantForm,
+    VersionCorrigeeForm,
 )
-from .models import Production, Statut
+from .models import Production, Statut, VersionDocument
 
 ETAPES = [
     (1, "Type et métadonnées"),
@@ -69,7 +72,19 @@ def chronologie(production) -> list[dict]:
             {"date": version.date_depot, "libelle": f"Version {version.numero} déposée"}
         )
     if production.date_soumission:
-        evenements.append({"date": production.date_soumission, "libelle": "Soumis à l'encadreur"})
+        evenements.append(
+            {"date": production.date_soumission, "libelle": "Soumis à l'encadreur (dernière fois)"}
+        )
+    for avis in production.avis.select_related("encadrement__enseignant__utilisateur", "version"):
+        evenements.append(
+            {
+                "date": avis.date,
+                "libelle": f"Avis {avis.get_avis_display().lower()} de "
+                f"{avis.encadrement.enseignant.utilisateur} "
+                f"({avis.encadrement.get_role_display().lower()}, version {avis.version.numero})",
+                "detail": avis.commentaire,
+            }
+        )
     if production.date_archivage:
         evenements.append({"date": production.date_archivage, "libelle": "Archivé"})
     return sorted(evenements, key=lambda e: e["date"])
@@ -91,6 +106,13 @@ class DepotDetailView(LoginRequiredMixin, TemplateView):
             chronologie=chronologie(production),
             modifiable=modifiable,
             manquants=services.elements_manquants(production) if modifiable else [],
+            avis=production.avis.select_related("encadrement__enseignant__utilisateur", "version"),
+            telechargeable=acces.peut_telecharger(user, production),
+            correction_attendue=production.statut in services.STATUT_APRES_VERSION_CORRIGEE
+            and acces.est_auteur_principal(user, production),
+            motif=services.motif_corrections(production),
+            evaluable=acces.est_encadrant(user, production),
+            est_auteur=acces.est_auteur(user, production),
             **kwargs,
         )
 
@@ -340,3 +362,80 @@ class Etape5View(BrouillonMixin, TemplateView):
             return redirect(self.url_etape(5))
         messages.success(request, "Votre travail a été soumis à votre directeur.")
         return redirect("productions:detail", pk=pk)
+
+
+# Version corrigée et téléchargement (phase 3) ---------------------------------------------
+
+
+class VersionCorrigeeView(LoginRequiredMixin, FormView):
+    template_name = "productions/version_corrigee.html"
+    form_class = VersionCorrigeeForm
+
+    @cached_property
+    def production(self):
+        return obtenir_production_visible(self.request.user, self.kwargs["pk"])
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        production = self.production
+        if production.statut not in services.STATUT_APRES_VERSION_CORRIGEE and (
+            request.method == "GET"
+        ):
+            messages.info(request, "Aucune correction n'est attendue sur ce travail.")
+            return redirect("productions:detail", pk=production.pk)
+        if not acces.est_auteur_principal(request.user, production):
+            messages.info(request, "Seul l'auteur principal peut déposer la version corrigée.")
+            return redirect("productions:detail", pk=production.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            production=self.production,
+            motif=services.motif_corrections(self.production),
+            version=self.production.version_courante(),
+            **kwargs,
+        )
+
+    def form_valid(self, form):
+        try:
+            version = services.soumettre_version_corrigee(
+                self.request.user,
+                self.production,
+                form.cleaned_data["fichier"],
+                form.cleaned_data["note"],
+            )
+        except ActionInterdite as erreur:
+            form.add_error("fichier", str(erreur))
+            return self.form_invalid(form)
+        messages.success(
+            self.request,
+            f"Version corrigée n° {version.numero} déposée : votre travail a été renvoyé "
+            "pour évaluation.",
+        )
+        return redirect("productions:detail", pk=self.production.pk)
+
+
+class TelechargerVersionView(LoginRequiredMixin, View):
+    """Seul point de sortie des fichiers : contrôle des droits, journalisation, envoi."""
+
+    def get(self, request, pk, numero):
+        production = get_object_or_404(Production, pk=pk)
+        if not acces.peut_telecharger(request.user, production):
+            raise Http404("Document introuvable.")
+        version = get_object_or_404(VersionDocument, production=production, numero=numero)
+        services.enregistrer_telechargement(request.user, version, request.META.get("REMOTE_ADDR"))
+        nom = version.nom_original or f"version-{version.numero}.pdf"
+        if settings.X_ACCEL_REDIRECT:
+            reponse = HttpResponse(content_type="application/pdf")
+            reponse["X-Accel-Redirect"] = settings.X_ACCEL_PREFIXE + version.fichier.name
+        else:
+            try:
+                flux = version.fichier.open("rb")
+            except FileNotFoundError:
+                raise Http404("Fichier introuvable sur le serveur.") from None
+            reponse = FileResponse(flux, content_type="application/pdf")
+        reponse["Content-Disposition"] = content_disposition_header(False, nom)
+        reponse["Cache-Control"] = "private, no-store"
+        reponse["X-Content-Type-Options"] = "nosniff"
+        return reponse

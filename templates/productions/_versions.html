@@ -2,15 +2,16 @@
 <div class="tableau-conteneur">
   <table class="tableau">
     <caption class="sr-only">Versions du document</caption>
-    <thead><tr><th scope="col">Version</th><th scope="col">Déposée le</th><th scope="col">Fichier</th><th scope="col">Taille</th><th scope="col">Empreinte SHA-256</th></tr></thead>
+    <thead><tr><th scope="col">Version</th><th scope="col">Déposée le</th><th scope="col">Fichier</th><th scope="col">Taille</th><th scope="col">Empreinte SHA-256</th>{% if telechargeable %}<th scope="col"><span class="sr-only">Télécharger</span></th>{% endif %}</tr></thead>
     <tbody>
       {% for v in versions %}
       <tr>
         <th scope="row">{{ v.numero }}{% if forloop.first %} <span class="badge badge-accent">courante</span>{% endif %}</th>
         <td>{{ v.date_depot|date:"j F Y à H:i" }}</td>
-        <td class="break-all">{{ v.nom_original }}</td>
+        <td class="break-all">{{ v.nom_original }}{% if v.note_corrections %}<span class="mt-1 block text-sm whitespace-pre-line text-gris-600"><span class="font-semibold">Corrections :</span> {{ v.note_corrections }}</span>{% endif %}</td>
         <td class="whitespace-nowrap">{{ v.taille|taille }}</td>
         <td><code title="{{ v.empreinte_sha256 }}">{{ v.empreinte_abregee }}</code></td>
+        {% if telechargeable %}<td class="tableau-actions"><a href="{% url 'productions:telecharger' v.production_id v.numero %}" class="bouton bouton-discret">Ouvrir le PDF<span class="sr-only"> de la version {{ v.numero }}</span></a></td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>

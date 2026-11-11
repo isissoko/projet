@@ -9,6 +9,16 @@ urlpatterns = [
     path("nouveau/", views.NouveauDepotView.as_view(), name="nouveau"),
     path("<int:pk>/", views.DepotDetailView.as_view(), name="detail"),
     path("<int:pk>/supprimer/", views.DepotSupprimerView.as_view(), name="supprimer"),
+    path(
+        "<int:pk>/version-corrigee/",
+        views.VersionCorrigeeView.as_view(),
+        name="version_corrigee",
+    ),
+    path(
+        "<int:pk>/versions/<int:numero>/telecharger/",
+        views.TelechargerVersionView.as_view(),
+        name="telecharger",
+    ),
     path("<int:pk>/etape/1/", views.Etape1View.as_view(), name="etape1"),
     path("<int:pk>/etape/2/", views.Etape2View.as_view(), name="etape2"),
     path("<int:pk>/etape/3/", views.Etape3View.as_view(), name="etape3"),

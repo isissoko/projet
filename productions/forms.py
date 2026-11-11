@@ -7,6 +7,7 @@ from referentiel.models import AnneeAcademique, Domaine, Filiere, MotCle
 from .models import (
     MENTIONS_MEMOIRE,
     MENTIONS_THESE,
+    Avis,
     Langue,
     Memoire,
     Mention,
@@ -208,4 +209,44 @@ class FichierForm(forms.Form):
         widget=forms.FileInput(
             attrs={"accept": ".pdf,application/pdf", "data-taille-max": TAILLE_MAX_PDF}
         ),
+    )
+
+
+class AvisForm(forms.Form):
+    avis = forms.ChoiceField(label="Votre avis", choices=Avis.choices, widget=forms.RadioSelect)
+    commentaire = forms.CharField(
+        label="Commentaire",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 6}),
+        help_text="Obligatoire pour demander des corrections ou rejeter : précisez ce qui doit "
+        "être revu.",
+    )
+
+    def clean(self):
+        donnees = super().clean()
+        avis = donnees.get("avis")
+        commentaire = (donnees.get("commentaire") or "").strip()
+        donnees["commentaire"] = commentaire
+        if avis and avis != Avis.FAVORABLE and not commentaire:
+            self.add_error(
+                "commentaire", "Un motif est obligatoire pour demander des corrections ou rejeter."
+            )
+        return donnees
+
+
+class VersionCorrigeeForm(forms.Form):
+    fichier = forms.FileField(
+        label="PDF corrigé",
+        validators=[valider_pdf],
+        help_text="PDF uniquement, 50 Mo au maximum. Il deviendra la nouvelle version.",
+        widget=forms.FileInput(
+            attrs={"accept": ".pdf,application/pdf", "data-taille-max": TAILLE_MAX_PDF}
+        ),
+    )
+    note = forms.CharField(
+        label="Ce que vous avez corrigé",
+        required=False,
+        max_length=5000,
+        widget=forms.Textarea(attrs={"rows": 5}),
+        help_text="Facultatif, mais utile à votre encadreur.",
     )
