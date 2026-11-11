@@ -244,3 +244,81 @@
   phase 6, aux points d'extension marqués.
 - `peut_telecharger` pour les travaux archivés : phase 4.
 - Questions C, F, G, I, J, K et L de la phase 0 toujours en attente.
+
+## Phase 4 — Contrôle bibliothèque, cote, archivage, accès, retrait (11 novembre 2026)
+
+### Fait
+- **Modèles** (migration `0003`) :
+  - `VerificationDocumentaire` : production, version contrôlée, bibliothécaire, décision
+    CONFORME ou A_CORRIGER, motif (obligatoire pour A_CORRIGER, en base), date. Jamais
+    supprimée ; admin en lecture seule.
+  - `CompteurCote(code_type, annee, dernier_numero)` : unique par type et année, type MEM ou
+    THE, année sur quatre chiffres.
+  - `Production` : nouveaux champs `motif_retrait` et `date_retrait` ; contraintes sur le
+    format de la cote, le niveau d'accès, l'archivage complet (un travail ARCHIVE ou RETIRE a
+    une cote, un niveau d'accès et une date d'archivage) et le retrait motivé.
+- **Services** (`productions/services.py`) :
+  - `attribuer_cote` : crée le compteur au besoin par `INSERT … ON CONFLICT DO NOTHING`
+    (aucune erreur en cas de création simultanée), puis le verrouille et l'incrémente. Refuse
+    d'être appelé hors transaction.
+  - `archiver` : verrou, statut VALIDE (sinon 409), rôle bibliothécaire, niveau d'accès, fin
+    d'embargo future, date de soutenance. Crée la vérification CONFORME, attribue la cote et
+    fait passer le travail à ARCHIVE dans une seule transaction.
+  - `demander_corrections_bibliotheque` (motif obligatoire), `retirer` (motif obligatoire,
+    enregistré par `changer_statut` dans `motif_retrait`), `modifier_acces`,
+    `modifier_metadonnees` (BF12). Points d'extension marqués « PHASE 6 » pour la
+    journalisation.
+  - `motif_corrections` renvoie désormais un objet `DemandeCorrections` (origine, auteur,
+    date, version, texte), pour l'encadreur comme pour la bibliothèque.
+- **Accès** (`productions/acces.py`) : `peut_telecharger(user, production, version=None)`
+  complet, `embargo_actif`, `aujourd_hui`, `raison_indisponibilite`,
+  `versions_consultables`, `productions_a_controler`, `nombre_a_controler`, `catalogue`.
+- **Vues** :
+  - Nouvelle application `bibliotheque` : « À contrôler » (onglets), écran de contrôle
+    (archiver, demander des corrections, modifier l'accès, retirer, chacun avec sa modale),
+    correction des métadonnées, catalogue (recherche par titre ou cote, filtres par statut et
+    par type, pagination).
+  - Menu : « À contrôler », avec un compteur, et « Catalogue ».
+  - Téléchargement ouvert aux visiteurs pour le libre accès ; un visiteur sans droit est
+    redirigé vers la connexion, un utilisateur connecté sans droit reçoit 404.
+  - Page de détail : cote, encadré « Archivage », raison de l'indisponibilité, bandeau de
+    retrait. Pour les personnes qui ne sont pas des proches, la chronologie et les avis sont
+    masqués et seule la version archivée apparaît.
+- **Tests** : 494 au total, dont 150 nouveaux :
+  - matrice d'accès complète : 11 profils × 3 niveaux × 4 cas d'embargo × 8 statuts ;
+  - concurrence sur la cote, avec de vraies transactions et 8 fils ;
+  - archivage concurrent du même travail ;
+  - services de la bibliothèque et vues.
+
+  Couverture : `services.py` 94 %, `acces.py` 99 %, `validators.py` 95 %.
+
+### Décisions
+- **Q1 (année de la cote)** : l'année de la date de soutenance, exigée pour archiver.
+- **Q2 (archivage et vérification)** : un seul geste ; archiver crée la vérification
+  CONFORME.
+- **Q3 (travail retiré)** : 404 pour les tiers et absent de la recherche ; les proches et la
+  bibliothèque voient le motif.
+- **Q4 (versions antérieures)** : réservées aux proches ; le public n'accède qu'à la version
+  archivée.
+- **Q5 (métadonnées)** : la bibliothèque les corrige aux statuts VALIDE,
+  A_CORRIGER_BIBLIOTHEQUE et ARCHIVE. Le type et la cote ne changent jamais ; l'étudiant ne
+  modifie plus rien après la soumission. Le retrait est définitif.
+- **Stockage du retrait** : `motif_retrait` et `date_retrait` sont des champs de
+  `Production`, écrits par `changer_statut` comme `date_archivage`. Le motif doit être
+  affiché sans dépendre du journal de la phase 6.
+- **Conflit d'intérêts** : un bibliothécaire qui est aussi auteur ne peut pas traiter son
+  propre travail.
+- **Modification de l'accès** : une fin d'embargo déjà enregistrée, même passée, est acceptée
+  telle quelle. On peut ainsi changer le seul niveau d'accès après la levée de l'embargo.
+- **Retrait et administrateurs** : le retrait est réservé au rôle BIBLIOTHECAIRE, comme dans
+  CLAUDE.md ; un administrateur sans ce rôle ne peut pas retirer.
+- **Commits** : les étapes « espace bibliothèque » et « catalogue et retrait » forment un
+  seul commit, parce qu'elles partagent l'écran de contrôle.
+
+### Points ouverts
+- La fiche publique pour les visiteurs (la page de détail exige encore une connexion) et
+  l'exclusion des travaux retirés de la recherche arrivent en phase 5.
+- La journalisation des archivages, retraits et modifications (RG08) et les notifications
+  (l'étudiant averti des corrections demandées par la bibliothèque) arrivent en phase 6, aux
+  points d'extension marqués.
+- Questions F, J, K et L de la phase 0 toujours en attente.
