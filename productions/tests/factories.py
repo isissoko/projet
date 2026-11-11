@@ -77,3 +77,18 @@ def depot_complet(etudiant=None, factory_classe=MemoireFactory, **attributs):
     directeur = ajouter_directeur(production)
     services.ajouter_version(etudiant, production, pdf_valide())
     return production, etudiant, directeur
+
+
+def ajouter_codirecteur(production, enseignant=None):
+    enseignant = enseignant or ProfilEnseignantFactory()
+    Encadrement.objects.create(
+        production=production, enseignant=enseignant, role=RoleEncadrement.CO_DIRECTEUR
+    )
+    return enseignant
+
+
+def depot_soumis(**attributs):
+    """Travail soumis à son directeur : renvoie (production, étudiant, directeur)."""
+    production, etudiant, directeur = depot_complet(**attributs)
+    services.soumettre(etudiant, production)
+    return production, etudiant, directeur

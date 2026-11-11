@@ -19,6 +19,8 @@ from . import acces
 from .models import (
     MENTIONS_MEMOIRE,
     MENTIONS_THESE,
+    Avis,
+    AvisEncadrement,
     Contributeur,
     Contribution,
     Encadrement,
@@ -328,7 +330,7 @@ def retirer_encadrant(acteur, production, encadrement_id) -> None:
 # Versions -----------------------------------------------------------------------------
 
 
-def _creer_version(acteur, production, fichier) -> VersionDocument:
+def _creer_version(acteur, production, fichier, note_corrections: str = "") -> VersionDocument:
     """Valide le PDF, calcule l'empreinte et enregistre une nouvelle version (verrou tenu)."""
     try:
         valider_pdf(fichier)
@@ -341,6 +343,7 @@ def _creer_version(acteur, production, fichier) -> VersionDocument:
         taille=fichier.size,
         empreinte_sha256=calculer_sha256(fichier),
         depose_par=acteur,
+        note_corrections=(note_corrections or "").strip(),
     )
     # Le fichier est écrit avant la ligne en base. Si l'enregistrement échoue, on l'efface.
     # (Une annulation plus tardive de la transaction laisserait un fichier orphelin, sans
@@ -436,3 +439,120 @@ def soumettre(acteur, production) -> Production:
     if manquants:
         raise SoumissionIncomplete(manquants)
     return changer_statut(production, Statut.SOUMIS, acteur)  # met aussi à jour l'instance
+
+
+# Évaluation par l'encadreur (phase 3) ---------------------------------------------------
+
+STATUT_APRES_AVIS_DU_DIRECTEUR = {
+    Avis.FAVORABLE: Statut.VALIDE,
+    Avis.CORRECTIONS_DEMANDEES: Statut.A_CORRIGER_ENCADREUR,
+    Avis.DEFAVORABLE: Statut.REJETE,
+}
+
+
+def _apres_avis_consultatif(production, avis, acteur):
+    """Point d'extension de la phase 6.
+
+    >>> PHASE 6 : journaliser l'avis du co-directeur et notifier le directeur
+    >>> (transaction.on_commit).
+    """
+
+
+@transaction.atomic
+def donner_avis(acteur, production, avis: str, commentaire: str = "") -> AvisEncadrement:
+    """Enregistre l'avis d'un encadrant sur la version courante.
+
+    L'avis du directeur fait changer le statut (RG02) ; celui d'un co-directeur est consultatif.
+    """
+    verrouillee = _verrouiller(production)
+    if avis not in Avis.values:
+        raise ActionInterdite("Avis inconnu.")
+    if verrouillee.statut != Statut.SOUMIS:
+        raise TransitionInterdite(
+            production,
+            verrouillee.statut,
+            STATUT_APRES_AVIS_DU_DIRECTEUR[avis],
+            "Ce travail n'est plus en attente d'évaluation : son statut a changé.",
+        )
+    encadrement = Encadrement.objects.filter(
+        production=verrouillee, enseignant__utilisateur=acteur
+    ).first()
+    if encadrement is None or not acteur.a_role(Role.ENSEIGNANT):
+        raise ActionInterdite("Seuls les encadrants de ce travail peuvent l'évaluer.")
+    commentaire = (commentaire or "").strip()
+    if avis != Avis.FAVORABLE and not commentaire:
+        raise MotifObligatoire(
+            "Un motif est obligatoire pour demander des corrections ou rejeter le travail."
+        )
+    version = verrouillee.version_courante()
+    if version is None:
+        raise ActionInterdite("Aucune version à évaluer.")
+    if AvisEncadrement.objects.filter(encadrement=encadrement, version=version).exists():
+        raise ActionInterdite(f"Vous avez déjà donné votre avis sur la version {version.numero}.")
+
+    resultat = AvisEncadrement.objects.create(
+        production=verrouillee,
+        encadrement=encadrement,
+        version=version,
+        avis=avis,
+        commentaire=commentaire,
+    )
+    if encadrement.role == RoleEncadrement.DIRECTEUR:
+        changer_statut(production, STATUT_APRES_AVIS_DU_DIRECTEUR[avis], acteur, commentaire)
+    else:
+        _apres_avis_consultatif(production, resultat, acteur)
+    return resultat
+
+
+STATUT_APRES_VERSION_CORRIGEE = {
+    Statut.A_CORRIGER_ENCADREUR: Statut.SOUMIS,
+    Statut.A_CORRIGER_BIBLIOTHEQUE: Statut.VALIDE,
+}
+
+
+@transaction.atomic
+def soumettre_version_corrigee(acteur, production, fichier, note: str = "") -> VersionDocument:
+    """Dépose la version corrigée (nouveau PDF obligatoire) et renvoie le travail à
+    l'encadreur (A_CORRIGER_ENCADREUR → SOUMIS) ou à la bibliothèque
+    (A_CORRIGER_BIBLIOTHEQUE → VALIDE)."""
+    verrouillee = _verrouiller(production)
+    cible = STATUT_APRES_VERSION_CORRIGEE.get(verrouillee.statut)
+    if cible is None:
+        raise TransitionInterdite(
+            production,
+            verrouillee.statut,
+            Statut.SOUMIS,
+            "Aucune correction n'est attendue sur ce travail.",
+        )
+    if not acces.est_auteur_principal(acteur, verrouillee):
+        raise ActionInterdite("Seul l'auteur principal peut déposer la version corrigée.")
+    if fichier is None:
+        raise ActionInterdite("Déposez le PDF corrigé.")
+    version = _creer_version(acteur, verrouillee, fichier, note_corrections=note)
+    changer_statut(production, cible, acteur, f"Version corrigée n° {version.numero} déposée.")
+    return version
+
+
+def motif_corrections(production):
+    """Dernier avis du directeur demandant des corrections, si le travail est à corriger.
+
+    Phase 4 : ajouter le motif de la bibliothèque (VerificationDocumentaire).
+    """
+    if production.statut != Statut.A_CORRIGER_ENCADREUR:
+        return None
+    return (
+        AvisEncadrement.objects.filter(
+            production=production,
+            avis=Avis.CORRECTIONS_DEMANDEES,
+            encadrement__role=RoleEncadrement.DIRECTEUR,
+        )
+        .select_related("encadrement__enseignant__utilisateur", "version")
+        .first()
+    )
+
+
+def enregistrer_telechargement(utilisateur, version, adresse_ip=None) -> None:
+    """Point d'extension de la phase 6.
+
+    >>> PHASE 6 : créer le JournalAction « téléchargement » (RG08).
+    """
