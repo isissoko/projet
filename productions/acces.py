@@ -1,12 +1,20 @@
-"""Règles d'accès aux productions (RG11). Aucune vue ne les réimplémente.
+"""Règles d'accès aux productions (RG10, RG11, accès aux fichiers). Aucune vue ne les
+réimplémente.
 
-Phase 2 : visibilité des productions non archivées et modification des brouillons.
-Phase 3 : évaluation et première version de peut_telecharger (travaux non archivés).
-Phase 4 : compléter peut_voir_fiche et peut_telecharger (ARCHIVE, RETIRE, niveaux, embargo).
+Fiche : publique pour un travail ARCHIVE ; sinon (y compris RETIRE) réservée aux proches
+(auteurs, encadrants, bibliothécaires, administrateurs), les autres reçoivent 404.
+
+PDF d'un travail ARCHIVE :
+- embargo actif (date_fin_embargo > aujourd'hui) : proches seulement ;
+- sinon LIBRE : tout le monde ; RESTREINT : utilisateurs connectés ; CONFIDENTIEL : proches.
+Le public n'accède qu'à la version archivée (la version courante) ; les versions
+antérieures restent réservées aux proches (décision Q4 de la phase 4).
+L'embargo est évalué à chaque appel : il se lève tout seul.
 """
 
 from django.db.models import Exists, OuterRef, Q, Subquery
 from django.utils import timezone
+from django.utils.formats import date_format
 
 from comptes.roles import Role
 
@@ -14,6 +22,7 @@ from .models import (
     AvisEncadrement,
     Contribution,
     Encadrement,
+    NiveauAcces,
     Production,
     RoleContribution,
     Statut,
@@ -69,7 +78,7 @@ def est_proche(user, production) -> bool:
 
 def peut_voir_fiche(user, production) -> bool:
     if production.statut == Statut.ARCHIVE:
-        return True  # fiche publique (CLAUDE.md) ; détaillé en phase 4
+        return True
     return est_proche(user, production)
 
 
@@ -108,14 +117,61 @@ def peut_evaluer(user, production) -> bool:
     )
 
 
-def peut_telecharger(user, production) -> bool:
-    """Droit de télécharger les PDF d'une production.
+def embargo_actif(production) -> bool:
+    return production.date_fin_embargo is not None and production.date_fin_embargo > aujourd_hui()
 
-    Travail non archivé : auteurs, encadrants, bibliothécaires, administrateurs (RG11).
-    Travail archivé : provisoirement les mêmes personnes ; la règle complète (LIBRE,
-    RESTREINT, CONFIDENTIEL, embargo) arrive en phase 4.
-    """
-    return est_proche(user, production)
+
+def _est_version_archivee(production, version) -> bool:
+    if version is None:
+        return True
+    courante = (
+        VersionDocument.objects.filter(production_id=production.pk)
+        .order_by("-numero")
+        .values_list("numero", flat=True)
+        .first()
+    )
+    return version.production_id == production.pk and version.numero == courante
+
+
+def peut_telecharger(user, production, version=None) -> bool:
+    """Droit d'ouvrir le PDF d'une production : la version donnée, ou la version courante."""
+    if est_proche(user, production):
+        return True
+    if production.statut != Statut.ARCHIVE or embargo_actif(production):
+        return False
+    if not _est_version_archivee(production, version):
+        return False
+    if production.niveau_acces == NiveauAcces.LIBRE:
+        return True
+    if production.niveau_acces == NiveauAcces.RESTREINT:
+        return _connecte(user)
+    return False  # CONFIDENTIEL (ou niveau absent)
+
+
+def raison_indisponibilite(user, production) -> str | None:
+    """Pourquoi le PDF n'est pas accessible à cet utilisateur (None s'il l'est)."""
+    if peut_telecharger(user, production):
+        return None
+    if production.statut != Statut.ARCHIVE:
+        return "Le document n'est pas encore archivé."
+    if embargo_actif(production):
+        fin = date_format(production.date_fin_embargo, "j F Y")
+        return f"Le document est sous embargo jusqu'au {fin}."
+    if production.niveau_acces == NiveauAcces.RESTREINT:
+        return "Le document est réservé aux utilisateurs connectés : connectez-vous pour l'ouvrir."
+    return (
+        "Le document est confidentiel : seuls ses auteurs, ses encadrants et la bibliothèque "
+        "y ont accès."
+    )
+
+
+def versions_consultables(user, production):
+    """Versions listées sur la fiche : toutes pour les proches, la seule version archivée
+    pour les autres."""
+    versions = production.versions.order_by("-numero")
+    if est_proche(user, production):
+        return versions
+    return versions[:1]
 
 
 def travaux_encadres(user):
@@ -148,3 +204,28 @@ def travaux_encadres(user):
 def nombre_a_evaluer(user) -> int:
     """Travaux soumis attendant encore l'avis de cet encadrant (compteur du menu)."""
     return travaux_encadres(user).filter(statut=Statut.SOUMIS, avis_donne=False).count()
+
+
+# Bibliothèque (phase 4) ----------------------------------------------------------------
+
+
+def est_bibliothecaire(user) -> bool:
+    return _connecte(user) and user.a_role(Role.BIBLIOTHECAIRE)
+
+
+def productions_a_controler(user):
+    """Travaux validés par l'encadreur ou en attente des corrections de la bibliothèque."""
+    if not est_bibliothecaire(user):
+        return Production.objects.none()
+    return Production.objects.filter(statut__in=[Statut.VALIDE, Statut.A_CORRIGER_BIBLIOTHEQUE])
+
+
+def nombre_a_controler(user) -> int:
+    return productions_a_controler(user).filter(statut=Statut.VALIDE).count()
+
+
+def catalogue(user):
+    """Travaux archivés ou retirés, pour la gestion par la bibliothèque."""
+    if not est_bibliothecaire(user):
+        return Production.objects.none()
+    return Production.objects.filter(statut__in=[Statut.ARCHIVE, Statut.RETIRE])

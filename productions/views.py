@@ -6,6 +6,7 @@ from operator import and_
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -85,8 +86,35 @@ def chronologie(production) -> list[dict]:
                 "detail": avis.commentaire,
             }
         )
+    for verification in production.verifications.select_related("version"):
+        conforme = verification.decision == "CONFORME"
+        evenements.append(
+            {
+                "date": verification.date,
+                "libelle": (
+                    "Contrôle de la bibliothèque : conforme"
+                    if conforme
+                    else "Corrections demandées par la bibliothèque"
+                )
+                + f" (version {verification.version.numero})",
+                "detail": verification.motif,
+            }
+        )
     if production.date_archivage:
-        evenements.append({"date": production.date_archivage, "libelle": "Archivé"})
+        evenements.append(
+            {
+                "date": production.date_archivage,
+                "libelle": f"Archivé sous la cote {production.cote}",
+            }
+        )
+    if production.date_retrait:
+        evenements.append(
+            {
+                "date": production.date_retrait,
+                "libelle": "Retiré",
+                "detail": production.motif_retrait,
+            }
+        )
     return sorted(evenements, key=lambda e: e["date"])
 
 
@@ -99,15 +127,18 @@ class DepotDetailView(LoginRequiredMixin, TemplateView):
         modifiable = acces.peut_modifier_brouillon(user, production)
         return super().get_context_data(
             production=production,
-            versions=production.versions.order_by("-numero"),
+            versions=acces.versions_consultables(user, production),
             contributions=production.contributions.select_related("contributeur"),
             encadrements=production.encadrements.select_related("enseignant__utilisateur"),
             mots_cles=production.mots_cles.all(),
-            chronologie=chronologie(production),
+            chronologie=chronologie(production) if acces.est_proche(user, production) else [],
             modifiable=modifiable,
             manquants=services.elements_manquants(production) if modifiable else [],
             avis=production.avis.select_related("encadrement__enseignant__utilisateur", "version"),
             telechargeable=acces.peut_telecharger(user, production),
+            raison_indisponibilite=acces.raison_indisponibilite(user, production),
+            embargo_actif=acces.embargo_actif(production),
+            est_proche=acces.est_proche(user, production),
             correction_attendue=production.statut in services.STATUT_APRES_VERSION_CORRIGEE
             and acces.est_auteur_principal(user, production),
             motif=services.motif_corrections(production),
@@ -416,14 +447,20 @@ class VersionCorrigeeView(LoginRequiredMixin, FormView):
         return redirect("productions:detail", pk=self.production.pk)
 
 
-class TelechargerVersionView(LoginRequiredMixin, View):
-    """Seul point de sortie des fichiers : contrôle des droits, journalisation, envoi."""
+class TelechargerVersionView(View):
+    """Seul point de sortie des fichiers : contrôle des droits, journalisation, envoi.
+
+    Ouvert aux visiteurs (libre accès) ; un visiteur sans droit est invité à se connecter,
+    un utilisateur connecté sans droit reçoit 404.
+    """
 
     def get(self, request, pk, numero):
         production = get_object_or_404(Production, pk=pk)
-        if not acces.peut_telecharger(request.user, production):
+        version = VersionDocument.objects.filter(production=production, numero=numero).first()
+        if version is None or not acces.peut_telecharger(request.user, production, version):
+            if not request.user.is_authenticated:
+                return redirect_to_login(request.get_full_path())
             raise Http404("Document introuvable.")
-        version = get_object_or_404(VersionDocument, production=production, numero=numero)
         services.enregistrer_telechargement(request.user, version, request.META.get("REMOTE_ADDR"))
         nom = version.nom_original or f"version-{version.numero}.pdf"
         if settings.X_ACCEL_REDIRECT:

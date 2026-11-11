@@ -1,0 +1,7 @@
+{% comment %}Informations d'archivage : cote, niveau d'accès, embargo. Paramètres : production, embargo_actif.{% endcomment %}
+<dl class="recap">
+  <div><dt>Cote</dt><dd>{{ production.cote }}</dd></div>
+  <div><dt>Archivé le</dt><dd>{{ production.date_archivage|date:"j F Y" }}</dd></div>
+  <div><dt>Niveau d'accès</dt><dd>{{ production.get_niveau_acces_display }}</dd></div>
+  <div><dt>Embargo</dt><dd>{% if production.date_fin_embargo %}{% if embargo_actif %}Jusqu'au {{ production.date_fin_embargo|date:"j F Y" }}{% else %}Levé le {{ production.date_fin_embargo|date:"j F Y" }}{% endif %}{% else %}Aucun{% endif %}</dd></div>
+</dl>

@@ -7,6 +7,7 @@
     <div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
       <span class="badge badge-neutre">{{ production.get_type_production_display }}</span>
       {% include "composants/badge_statut.html" with production=production %}
+      {% if production.cote %}<span class="badge badge-accent">Cote {{ production.cote }}</span>{% endif %}
     </div>
     <h1 class="titre-page">{{ production.titre }}</h1>
   </div>
@@ -31,6 +32,12 @@
 
 {% if modifiable and manquants %}{% include "productions/_manquants.html" with production=None %}{% endif %}
 {% include "productions/_motif.html" %}
+{% if production.statut == "RETIRE" %}
+<div class="alerte alerte-erreur" role="note">
+  <p class="font-semibold">Travail retiré le {{ production.date_retrait|date:"j F Y" }}</p>
+  <p class="mt-1 whitespace-pre-line">{{ production.motif_retrait }}</p>
+</div>
+{% endif %}
 
 <div class="grid gap-6 lg:grid-cols-3">
   <div class="space-y-6 lg:col-span-2">
@@ -38,20 +45,29 @@
       <h2 id="titre-metadonnees" class="mb-3 text-lg font-semibold text-nuit-900">Informations</h2>
       {% include "productions/_recapitulatif.html" %}
     </section>
+    {% if production.cote %}
+    <section class="carte" aria-labelledby="titre-archivage">
+      <h2 id="titre-archivage" class="mb-3 text-lg font-semibold text-nuit-900">Archivage</h2>
+      {% include "productions/_archivage.html" %}
+    </section>
+    {% endif %}
     <section aria-labelledby="titre-versions">
-      <h2 id="titre-versions" class="mb-2 text-lg font-semibold text-nuit-900">Versions du document</h2>
+      <h2 id="titre-versions" class="mb-2 text-lg font-semibold text-nuit-900">{% if est_proche %}Versions du document{% else %}Document{% endif %}</h2>
+      {% if raison_indisponibilite and production.statut == "ARCHIVE" %}<p class="alerte alerte-info mb-3">{{ raison_indisponibilite }}</p>{% endif %}
       {% if versions %}{% include "productions/_versions.html" %}{% else %}{% include "composants/etat_vide.html" with titre="Aucun fichier déposé" %}{% endif %}
     </section>
-    {% if production.statut != "BROUILLON" %}
+    {% if est_proche and production.statut != "BROUILLON" %}
     <section aria-labelledby="titre-avis">
       <h2 id="titre-avis" class="mb-2 text-lg font-semibold text-nuit-900">Avis des encadrants</h2>
       {% include "productions/_avis.html" %}
     </section>
     {% endif %}
   </div>
+  {% if chronologie %}
   <section class="carte h-fit" aria-labelledby="titre-chronologie">
     <h2 id="titre-chronologie" class="mb-3 text-lg font-semibold text-nuit-900">Chronologie</h2>
     {% include "composants/chronologie.html" with evenements=chronologie %}
   </section>
+  {% endif %}
 </div>
 {% endblock %}
