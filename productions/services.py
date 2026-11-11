@@ -4,6 +4,7 @@ Toute modification d'une production passe par ce module. Les vues se contentent 
 transmettre des données déjà validées par les formulaires.
 """
 
+import datetime
 import os
 from dataclasses import dataclass
 
@@ -21,16 +22,20 @@ from .models import (
     MENTIONS_THESE,
     Avis,
     AvisEncadrement,
+    CompteurCote,
     Contributeur,
     Contribution,
+    DecisionVerification,
     Encadrement,
     Memoire,
+    NiveauAcces,
     Production,
     RoleContribution,
     RoleEncadrement,
     Statut,
     These,
     TypeProduction,
+    VerificationDocumentaire,
     VersionDocument,
 )
 from .validators import calculer_sha256, valider_pdf
@@ -536,22 +541,54 @@ def soumettre_version_corrigee(acteur, production, fichier, note: str = "") -> V
     return version
 
 
-def motif_corrections(production):
-    """Dernier avis du directeur demandant des corrections, si le travail est à corriger.
+@dataclass(frozen=True)
+class DemandeCorrections:
+    """Dernière demande de corrections, qu'elle vienne de l'encadreur ou de la bibliothèque."""
 
-    Phase 4 : ajouter le motif de la bibliothèque (VerificationDocumentaire).
-    """
-    if production.statut != Statut.A_CORRIGER_ENCADREUR:
-        return None
-    return (
-        AvisEncadrement.objects.filter(
-            production=production,
-            avis=Avis.CORRECTIONS_DEMANDEES,
-            encadrement__role=RoleEncadrement.DIRECTEUR,
+    origine: str  # « encadreur » ou « bibliothèque »
+    auteur: object  # Utilisateur (None si le compte a disparu)
+    date: datetime.datetime
+    version: VersionDocument
+    texte: str
+
+
+def motif_corrections(production) -> DemandeCorrections | None:
+    """Motif de la demande de corrections en cours, si le travail est à corriger."""
+    if production.statut == Statut.A_CORRIGER_ENCADREUR:
+        avis = (
+            AvisEncadrement.objects.filter(
+                production=production,
+                avis=Avis.CORRECTIONS_DEMANDEES,
+                encadrement__role=RoleEncadrement.DIRECTEUR,
+            )
+            .select_related("encadrement__enseignant__utilisateur", "version")
+            .first()
         )
-        .select_related("encadrement__enseignant__utilisateur", "version")
-        .first()
-    )
+        if avis is not None:
+            return DemandeCorrections(
+                "encadreur",
+                avis.encadrement.enseignant.utilisateur,
+                avis.date,
+                avis.version,
+                avis.commentaire,
+            )
+    if production.statut == Statut.A_CORRIGER_BIBLIOTHEQUE:
+        verification = (
+            VerificationDocumentaire.objects.filter(
+                production=production, decision=DecisionVerification.A_CORRIGER
+            )
+            .select_related("bibliothecaire", "version")
+            .first()
+        )
+        if verification is not None:
+            return DemandeCorrections(
+                "bibliothèque",
+                verification.bibliothecaire,
+                verification.date,
+                verification.version,
+                verification.motif,
+            )
+    return None
 
 
 def enregistrer_telechargement(utilisateur, version, adresse_ip=None) -> None:
@@ -559,3 +596,181 @@ def enregistrer_telechargement(utilisateur, version, adresse_ip=None) -> None:
 
     >>> PHASE 6 : créer le JournalAction « téléchargement » (RG08).
     """
+
+
+# Contrôle de la bibliothèque, cote, archivage, retrait (phase 4) ------------------------
+
+STATUTS_METADONNEES_BIBLIOTHEQUE = (
+    Statut.VALIDE,
+    Statut.A_CORRIGER_BIBLIOTHEQUE,
+    Statut.ARCHIVE,
+)
+
+
+def _exiger_bibliothecaire(acteur, production):
+    if not (acteur is not None and acteur.is_authenticated and acteur.a_role(Role.BIBLIOTHECAIRE)):
+        raise ActionInterdite("Cette action est réservée aux bibliothécaires.")
+    if acces.est_auteur(acteur, production):
+        raise ActionInterdite("Vous ne pouvez pas traiter un travail dont vous êtes l'auteur.")
+
+
+def _verifier_embargo(date_fin_embargo, actuelle=None):
+    """Une date de fin d'embargo est dans le futur ; la date déjà enregistrée reste admise
+    (modification du seul niveau d'accès après la levée de l'embargo)."""
+    if date_fin_embargo is None or date_fin_embargo == actuelle:
+        return
+    if date_fin_embargo <= acces.aujourd_hui():
+        raise ActionInterdite("La date de fin d'embargo doit être postérieure à aujourd'hui.")
+
+
+def _verifier_niveau(niveau_acces):
+    if niveau_acces not in NiveauAcces.values:
+        raise ActionInterdite("Choisissez un niveau d'accès.")
+
+
+def attribuer_cote(code_type: str, annee: int) -> str:
+    """Tire le prochain numéro du CompteurCote (code_type, annee), verrouillé (RG06).
+
+    À appeler dans une transaction : le verrou est tenu jusqu'à sa fin, ce qui sérialise
+    les archivages concurrents. Les productions existantes ne sont jamais comptées.
+    """
+    if not transaction.get_connection().in_atomic_block:
+        raise RuntimeError("attribuer_cote doit être appelé dans une transaction.")
+    # INSERT … ON CONFLICT DO NOTHING : crée le compteur s'il n'existe pas, sans erreur
+    # si un archivage concurrent vient de le créer.
+    CompteurCote.objects.bulk_create(
+        [CompteurCote(code_type=code_type, annee=annee)], ignore_conflicts=True
+    )
+    compteur = CompteurCote.objects.select_for_update().get(code_type=code_type, annee=annee)
+    compteur.dernier_numero += 1
+    compteur.save(update_fields=["dernier_numero"])
+    return f"{code_type}-{annee}-{compteur.dernier_numero:04d}"
+
+
+@transaction.atomic
+def archiver(acteur, production, niveau_acces: str, date_fin_embargo=None) -> Production:
+    """VALIDE → ARCHIVE : vérification CONFORME, cote, niveau d'accès et embargo (BF07, BF08).
+
+    L'année de la cote est celle de la soutenance (décision Q1 de la phase 4).
+    """
+    verrouillee = _verrouiller(production)
+    if verrouillee.statut != Statut.VALIDE:
+        raise TransitionInterdite(production, verrouillee.statut, Statut.ARCHIVE)
+    _exiger_bibliothecaire(acteur, verrouillee)
+    _verifier_niveau(niveau_acces)
+    _verifier_embargo(date_fin_embargo)
+    if verrouillee.date_soutenance is None:
+        raise ActionInterdite(
+            "Renseignez la date de soutenance avant d'archiver : son année figure dans la cote."
+        )
+    version = verrouillee.version_courante()
+    if version is None:
+        raise ActionInterdite("Aucune version à archiver.")
+
+    VerificationDocumentaire.objects.create(
+        production=verrouillee,
+        version=version,
+        bibliothecaire=acteur,
+        decision=DecisionVerification.CONFORME,
+    )
+    cote = attribuer_cote(verrouillee.code_type(), verrouillee.date_soutenance.year)
+    Production.objects.filter(pk=production.pk).update(
+        cote=cote, niveau_acces=niveau_acces, date_fin_embargo=date_fin_embargo
+    )
+    production.cote = cote
+    production.niveau_acces = niveau_acces
+    production.date_fin_embargo = date_fin_embargo
+    return changer_statut(
+        production, Statut.ARCHIVE, acteur, f"Cote {cote}, version {version.numero} archivée."
+    )
+
+
+@transaction.atomic
+def demander_corrections_bibliotheque(acteur, production, motif: str):
+    """VALIDE → A_CORRIGER_BIBLIOTHEQUE, motif obligatoire (RG07)."""
+    verrouillee = _verrouiller(production)
+    if verrouillee.statut != Statut.VALIDE:
+        raise TransitionInterdite(production, verrouillee.statut, Statut.A_CORRIGER_BIBLIOTHEQUE)
+    _exiger_bibliothecaire(acteur, verrouillee)
+    motif = (motif or "").strip()
+    if not motif:
+        raise MotifObligatoire("Un motif est obligatoire pour demander des corrections.")
+    version = verrouillee.version_courante()
+    if version is None:
+        raise ActionInterdite("Aucune version à contrôler.")
+    verification = VerificationDocumentaire.objects.create(
+        production=verrouillee,
+        version=version,
+        bibliothecaire=acteur,
+        decision=DecisionVerification.A_CORRIGER,
+        motif=motif,
+    )
+    changer_statut(production, Statut.A_CORRIGER_BIBLIOTHEQUE, acteur, motif)
+    return verification
+
+
+@transaction.atomic
+def retirer(acteur, production, motif: str) -> Production:
+    """ARCHIVE → RETIRE, motif obligatoire (BF20, RG07). Le retrait est définitif."""
+    verrouillee = _verrouiller(production)
+    if verrouillee.statut != Statut.ARCHIVE:
+        raise TransitionInterdite(production, verrouillee.statut, Statut.RETIRE)
+    _exiger_bibliothecaire(acteur, verrouillee)
+    motif = (motif or "").strip()
+    if not motif:
+        raise MotifObligatoire("Un motif est obligatoire pour retirer un travail.")
+    return changer_statut(production, Statut.RETIRE, acteur, motif)
+
+
+def _apres_modification(production, acteur, detail):
+    """Point d'extension de la phase 6.
+
+    >>> PHASE 6 : créer le JournalAction « modification de métadonnées » (RG08).
+    """
+
+
+@transaction.atomic
+def modifier_acces(acteur, production, niveau_acces: str, date_fin_embargo=None) -> Production:
+    """Change le niveau d'accès et l'embargo d'un travail archivé (BF08)."""
+    verrouillee = _verrouiller(production)
+    if verrouillee.statut != Statut.ARCHIVE:
+        raise ActionInterdite("Seul l'accès d'un travail archivé peut être modifié.")
+    _exiger_bibliothecaire(acteur, verrouillee)
+    _verifier_niveau(niveau_acces)
+    _verifier_embargo(date_fin_embargo, actuelle=verrouillee.date_fin_embargo)
+    Production.objects.filter(pk=production.pk).update(
+        niveau_acces=niveau_acces,
+        date_fin_embargo=date_fin_embargo,
+        date_modification=timezone.now(),
+    )
+    production.niveau_acces = niveau_acces
+    production.date_fin_embargo = date_fin_embargo
+    _apres_modification(
+        production,
+        acteur,
+        f"Accès : {NiveauAcces(niveau_acces).label}, fin d'embargo : {date_fin_embargo or '—'}.",
+    )
+    return production
+
+
+@transaction.atomic
+def modifier_metadonnees(acteur, production, donnees: dict, mots_cles=None) -> Production:
+    """Correction des métadonnées par la bibliothèque (BF12), pendant le contrôle et après
+    l'archivage. Le type et la cote ne changent jamais."""
+    verrouillee = _verrouiller(production)
+    if verrouillee.statut not in STATUTS_METADONNEES_BIBLIOTHEQUE:
+        raise ActionInterdite("Les métadonnées de ce travail ne peuvent pas être modifiées.")
+    _exiger_bibliothecaire(acteur, verrouillee)
+    if verrouillee.statut == Statut.ARCHIVE and donnees.get("date_soutenance", True) is None:
+        raise ActionInterdite("La date de soutenance d'un travail archivé est obligatoire.")
+    specifique = verrouillee.specifique()
+    _appliquer_metadonnees(specifique, donnees)
+    try:
+        with transaction.atomic():
+            specifique.save()
+    except IntegrityError as erreur:
+        raise ActionInterdite("Données incohérentes pour ce type de travail.") from erreur
+    if mots_cles is not None:
+        specifique.mots_cles.set(mots_cles)
+    _apres_modification(specifique, acteur, "Métadonnées modifiées par la bibliothèque.")
+    return specifique

@@ -1,9 +1,12 @@
+import datetime
+
 import factory
 from django.utils import timezone
 
 from comptes.tests.factories import ProfilEnseignantFactory, UtilisateurFactory
 from productions import services
 from productions.models import (
+    Avis,
     Contributeur,
     Contribution,
     Encadrement,
@@ -121,3 +124,25 @@ def forcer_statut(production, statut):
     Production.objects.filter(pk=production.pk).update(**champs)
     production.refresh_from_db()
     return production
+
+
+def depot_valide(**attributs):
+    """Travail validé par son directeur, avec une date de soutenance :
+    renvoie (production, étudiant, directeur)."""
+    attributs.setdefault("date_soutenance", datetime.date(2026, 6, 15))
+    production, etudiant, directeur = depot_soumis(**attributs)
+    services.donner_avis(directeur.utilisateur, production, Avis.FAVORABLE)
+    production.refresh_from_db()
+    return production, etudiant, directeur
+
+
+def bibliothecaire():
+    return UtilisateurFactory(roles=["BIBLIOTHECAIRE"])
+
+
+def depot_archive(niveau_acces=NiveauAcces.LIBRE, date_fin_embargo=None, **attributs):
+    """Travail archivé par le service : renvoie (production, étudiant, directeur)."""
+    production, etudiant, directeur = depot_valide(**attributs)
+    services.archiver(bibliothecaire(), production, niveau_acces, date_fin_embargo)
+    production.refresh_from_db()
+    return production, etudiant, directeur

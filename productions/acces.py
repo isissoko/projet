@@ -6,6 +6,7 @@ Phase 4 : compléter peut_voir_fiche et peut_telecharger (ARCHIVE, RETIRE, nivea
 """
 
 from django.db.models import Exists, OuterRef, Q, Subquery
+from django.utils import timezone
 
 from comptes.roles import Role
 
@@ -18,6 +19,11 @@ from .models import (
     Statut,
     VersionDocument,
 )
+
+
+def aujourd_hui():
+    """Date du jour à Bamako (TIME_ZONE) : l'embargo est réévalué à chaque requête."""
+    return timezone.localdate()
 
 
 def _connecte(user) -> bool:

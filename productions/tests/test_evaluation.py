@@ -254,7 +254,9 @@ def test_rejet_definitif():
 def test_motif_corrections():
     production, _, _ = _a_corriger()
     motif = services.motif_corrections(production)
-    assert motif.commentaire == "Corriger le chapitre 2."
+    assert motif.texte == "Corriger le chapitre 2."
+    assert motif.origine == "encadreur"
+    assert motif.auteur == production.encadrements.get().enseignant.utilisateur
     production = _au_statut(production, Statut.SOUMIS)
     assert services.motif_corrections(production) is None
 
