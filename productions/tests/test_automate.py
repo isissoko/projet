@@ -13,7 +13,7 @@ from productions.services import (
     changer_statut,
 )
 
-from .factories import MemoireFactory
+from .factories import MemoireFactory, forcer_statut, preparer_archivage
 
 pytestmark = pytest.mark.django_db
 
@@ -22,10 +22,9 @@ PAIRES_INTERDITES = [p for p in TOUTES_LES_PAIRES if p not in TRANSITIONS]
 
 
 def _production_au_statut(statut):
-    production = MemoireFactory()
-    Production.objects.filter(pk=production.pk).update(statut=statut)
-    production.refresh_from_db()
-    return production
+    # Cote et niveau d'accès renseignés d'avance : VALIDE → ARCHIVE est testé ici
+    # directement sur changer_statut, sans le service archiver.
+    return forcer_statut(preparer_archivage(MemoireFactory()), statut)
 
 
 def test_table_complete_de_l_automate():
@@ -91,6 +90,6 @@ def test_statut_inconnu_interdit():
 def test_l_etat_en_base_fait_foi():
     """Une instance périmée en mémoire ne permet pas de contourner l'automate."""
     production = _production_au_statut(Statut.BROUILLON)
-    Production.objects.filter(pk=production.pk).update(statut=Statut.ARCHIVE)
+    forcer_statut(Production.objects.get(pk=production.pk), Statut.ARCHIVE)
     with pytest.raises(TransitionInterdite):
         changer_statut(production, Statut.SOUMIS, None)  # production.statut vaut encore BROUILLON

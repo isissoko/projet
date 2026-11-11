@@ -3,9 +3,9 @@ from django.contrib.auth.models import AnonymousUser
 
 from comptes.tests.factories import UtilisateurFactory
 from productions import acces, services
-from productions.models import Production, Statut
+from productions.models import Statut
 
-from .factories import depot_complet
+from .factories import depot_complet, forcer_statut
 
 pytestmark = pytest.mark.django_db
 
@@ -19,9 +19,7 @@ def depot():
 
 
 def _au_statut(production, statut):
-    Production.objects.filter(pk=production.pk).update(statut=statut)
-    production.refresh_from_db()
-    return production
+    return forcer_statut(production, statut)
 
 
 @pytest.mark.parametrize("statut", STATUTS_NON_ARCHIVES)

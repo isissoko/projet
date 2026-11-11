@@ -9,21 +9,18 @@ from productions import acces, services
 from productions.models import (
     Avis,
     AvisEncadrement,
-    Production,
     Statut,
     SuppressionInterdite,
 )
 
-from .factories import ajouter_codirecteur, depot_complet, depot_soumis
+from .factories import ajouter_codirecteur, depot_complet, depot_soumis, forcer_statut
 from .fichiers import docx_renomme_en_pdf, pdf_valide
 
 pytestmark = pytest.mark.django_db
 
 
 def _au_statut(production, statut):
-    Production.objects.filter(pk=production.pk).update(statut=statut)
-    production.refresh_from_db()
-    return production
+    return forcer_statut(production, statut)
 
 
 # Avis du directeur --------------------------------------------------------------------

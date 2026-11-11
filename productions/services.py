@@ -119,6 +119,9 @@ def changer_statut(production, nouveau_statut, acteur, detail: str = ""):
         champs["date_soumission"] = maintenant
     if nouveau_statut == Statut.ARCHIVE:
         champs["date_archivage"] = maintenant
+    if nouveau_statut == Statut.RETIRE:
+        champs["motif_retrait"] = detail
+        champs["date_retrait"] = maintenant
     Production.objects.filter(pk=production.pk).update(**champs)
     for nom, valeur in champs.items():
         setattr(production, nom, valeur)

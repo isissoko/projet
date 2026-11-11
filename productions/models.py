@@ -1,7 +1,8 @@
 """Productions académiques : mémoires, thèses, versions, contributeurs, encadrements.
 
 Règles reprises en base : RG02 (un directeur), RG05 (versions jamais supprimées),
-RG12 (niveau des mémoires, mentions réservées aux thèses).
+RG06 (format et unicité de la cote), RG07 (motifs), RG12 (niveau des mémoires, mentions
+réservées aux thèses).
 """
 
 import re
@@ -71,6 +72,8 @@ class NiveauMemoire(models.TextChoices):
 
 # Production -------------------------------------------------------------------
 
+REGEX_COTE = r"^(MEM|THE)-[0-9]{4}-[0-9]{4,}$"
+
 
 class Production(models.Model):
     """Production concrète (héritage multi-tables) : toujours créée via Memoire ou These."""
@@ -128,6 +131,8 @@ class Production(models.Model):
     date_modification = models.DateTimeField("modifiée le", auto_now=True)
     date_soumission = models.DateTimeField("soumise le", null=True, blank=True, editable=False)
     date_archivage = models.DateTimeField("archivée le", null=True, blank=True, editable=False)
+    motif_retrait = models.TextField("motif du retrait", blank=True, editable=False)
+    date_retrait = models.DateTimeField("retirée le", null=True, blank=True, editable=False)
 
     class Meta:
         verbose_name = "production"
@@ -140,6 +145,32 @@ class Production(models.Model):
             ),
             models.CheckConstraint(
                 condition=Q(statut__in=Statut.values), name="production_statut_valide"
+            ),
+            models.CheckConstraint(
+                condition=Q(niveau_acces__isnull=True) | Q(niveau_acces__in=NiveauAcces.values),
+                name="production_niveau_acces_valide",
+            ),
+            # RG06 : {CODE_TYPE}-{ANNEE}-{NUMERO:04d}.
+            models.CheckConstraint(
+                condition=Q(cote__isnull=True) | Q(cote__regex=REGEX_COTE),
+                name="production_cote_format",
+            ),
+            # Un travail archivé (ou retiré après archivage) a une cote, un niveau d'accès
+            # et une date d'archivage.
+            models.CheckConstraint(
+                condition=~Q(statut__in=[Statut.ARCHIVE, Statut.RETIRE])
+                | Q(
+                    cote__isnull=False,
+                    niveau_acces__isnull=False,
+                    date_archivage__isnull=False,
+                ),
+                name="production_archivee_complete",
+            ),
+            # RG07 : motif obligatoire pour retirer.
+            models.CheckConstraint(
+                condition=~Q(statut=Statut.RETIRE)
+                | Q(motif_retrait__regex=r"\S", date_retrait__isnull=False),
+                name="production_retrait_motive",
             ),
             # RG12 : mentions HONORABLE et TRES_HONORABLE réservées aux thèses.
             models.CheckConstraint(
@@ -199,6 +230,10 @@ class Production(models.Model):
     @property
     def est_brouillon(self) -> bool:
         return self.statut == Statut.BROUILLON
+
+    @property
+    def est_archive(self) -> bool:
+        return self.statut == Statut.ARCHIVE
 
 
 class Memoire(Production):
@@ -494,3 +529,107 @@ class AvisEncadrement(models.Model):
     @property
     def est_du_directeur(self) -> bool:
         return self.encadrement.role == RoleEncadrement.DIRECTEUR
+
+
+# Contrôle de la bibliothèque et cote ---------------------------------------------------
+
+
+class DecisionVerification(models.TextChoices):
+    CONFORME = "CONFORME", "Conforme"
+    A_CORRIGER = "A_CORRIGER", "À corriger"
+
+
+class VerificationDocumentaireQuerySet(models.QuerySet):
+    def delete(self):
+        raise SuppressionInterdite("Les vérifications documentaires ne sont jamais supprimées.")
+
+    delete.queryset_only = True
+
+
+class VerificationDocumentaire(models.Model):
+    """Décision de la bibliothèque sur une version (BF07). Historique jamais supprimé."""
+
+    production = models.ForeignKey(
+        Production,
+        on_delete=models.PROTECT,
+        related_name="verifications",
+        verbose_name="production",
+    )
+    version = models.ForeignKey(
+        VersionDocument,
+        on_delete=models.PROTECT,
+        related_name="verifications",
+        verbose_name="version contrôlée",
+    )
+    bibliothecaire = models.ForeignKey(
+        "comptes.Utilisateur",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verifications",
+        verbose_name="bibliothécaire",
+    )
+    decision = models.CharField("décision", max_length=15, choices=DecisionVerification.choices)
+    motif = models.TextField("motif", blank=True)
+    date = models.DateTimeField("date", auto_now_add=True)
+
+    objects = VerificationDocumentaireQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "vérification documentaire"
+        verbose_name_plural = "vérifications documentaires"
+        ordering = ["-date", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(decision__in=DecisionVerification.values),
+                name="verification_decision_valide",
+            ),
+            # RG07 : motif obligatoire pour demander des corrections.
+            models.CheckConstraint(
+                condition=Q(decision=DecisionVerification.CONFORME) | Q(motif__regex=r"\S"),
+                name="verification_motif_obligatoire_si_a_corriger",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_decision_display()} — {self.production}"
+
+    def delete(self, *args, **kwargs):
+        raise SuppressionInterdite("Les vérifications documentaires ne sont jamais supprimées.")
+
+
+class CodeType(models.TextChoices):
+    MEM = "MEM", "Mémoire"
+    THE = "THE", "Thèse"
+
+
+class CompteurCote(models.Model):
+    """Dernier numéro de cote attribué pour un type et une année (RG06).
+
+    Lu et incrémenté sous verrou (select_for_update) : les productions existantes ne sont
+    jamais comptées.
+    """
+
+    code_type = models.CharField("type", max_length=3, choices=CodeType.choices)
+    annee = models.PositiveSmallIntegerField("année")
+    dernier_numero = models.PositiveIntegerField("dernier numéro attribué", default=0)
+
+    class Meta:
+        verbose_name = "compteur de cote"
+        verbose_name_plural = "compteurs de cote"
+        ordering = ["-annee", "code_type"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["code_type", "annee"], name="compteur_cote_unique_par_type_et_annee"
+            ),
+            models.CheckConstraint(
+                condition=Q(code_type__in=CodeType.values), name="compteur_cote_type_valide"
+            ),
+            models.CheckConstraint(
+                condition=Q(annee__gte=1000, annee__lte=9999),
+                name="compteur_cote_annee_sur_quatre_chiffres",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.code_type}-{self.annee} : {self.dernier_numero}"

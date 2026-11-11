@@ -2,12 +2,14 @@ from django.contrib import admin
 
 from .models import (
     AvisEncadrement,
+    CompteurCote,
     Contributeur,
     Contribution,
     Encadrement,
     Memoire,
     Production,
     These,
+    VerificationDocumentaire,
     VersionDocument,
 )
 
@@ -41,7 +43,15 @@ class ProductionAdminBase(admin.ModelAdmin):
     list_display = ("titre", "type_production", "statut", "filiere", "date_modification")
     list_filter = ("type_production", "statut", "filiere")
     search_fields = ("titre", "cote")
-    readonly_fields = ("type_production", "statut", "date_soumission", "date_archivage")
+    readonly_fields = (
+        "type_production",
+        "statut",
+        "cote",
+        "date_soumission",
+        "date_archivage",
+        "motif_retrait",
+        "date_retrait",
+    )
     filter_horizontal = ("mots_cles",)
     inlines = (ContributionInline, EncadrementInline, VersionDocumentInline)
 
@@ -114,6 +124,40 @@ class AvisEncadrementAdmin(admin.ModelAdmin):
     list_display = ("production", "encadrement", "version", "avis", "date")
     list_filter = ("avis",)
     search_fields = ("production__titre",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(VerificationDocumentaire)
+class VerificationDocumentaireAdmin(admin.ModelAdmin):
+    """Historique en lecture seule : une vérification n'est ni modifiée ni supprimée."""
+
+    list_display = ("production", "version", "decision", "bibliothecaire", "date")
+    list_filter = ("decision",)
+    search_fields = ("production__titre", "production__cote")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CompteurCote)
+class CompteurCoteAdmin(admin.ModelAdmin):
+    """Consultation seule : les compteurs ne sont modifiés que par le service d'archivage."""
+
+    list_display = ("code_type", "annee", "dernier_numero")
 
     def has_add_permission(self, request):
         return False

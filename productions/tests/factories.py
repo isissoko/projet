@@ -1,4 +1,5 @@
 import factory
+from django.utils import timezone
 
 from comptes.tests.factories import ProfilEnseignantFactory, UtilisateurFactory
 from productions import services
@@ -7,9 +8,12 @@ from productions.models import (
     Contribution,
     Encadrement,
     Memoire,
+    NiveauAcces,
     NiveauMemoire,
+    Production,
     RoleContribution,
     RoleEncadrement,
+    Statut,
     These,
 )
 from referentiel.tests.factories import (
@@ -92,3 +96,28 @@ def depot_soumis(**attributs):
     production, etudiant, directeur = depot_complet(**attributs)
     services.soumettre(etudiant, production)
     return production, etudiant, directeur
+
+
+def preparer_archivage(production):
+    """Renseigne une cote et un niveau d'accès sans changer le statut (tests de l'automate)."""
+    Production.objects.filter(pk=production.pk).update(
+        cote=production.cote or f"{production.code_type()}-1999-{production.pk:04d}",
+        niveau_acces=production.niveau_acces or NiveauAcces.LIBRE,
+    )
+    production.refresh_from_db()
+    return production
+
+
+def forcer_statut(production, statut):
+    """Place directement une production dans un statut, sans passer par l'automate (tests
+    uniquement). Pour ARCHIVE et RETIRE, renseigne les champs exigés par les contraintes."""
+    champs = {"statut": statut}
+    if statut in (Statut.ARCHIVE, Statut.RETIRE):
+        production = preparer_archivage(production)
+        champs["date_archivage"] = production.date_archivage or timezone.now()
+    if statut == Statut.RETIRE:
+        champs["motif_retrait"] = production.motif_retrait or "Retrait de test."
+        champs["date_retrait"] = production.date_retrait or timezone.now()
+    Production.objects.filter(pk=production.pk).update(**champs)
+    production.refresh_from_db()
+    return production

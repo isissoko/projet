@@ -20,7 +20,13 @@ from productions.models import (
 )
 from referentiel.tests.factories import FiliereFactory, MotCleFactory
 
-from .factories import MemoireFactory, TheseFactory, ajouter_auteur_principal, depot_complet
+from .factories import (
+    MemoireFactory,
+    TheseFactory,
+    ajouter_auteur_principal,
+    depot_complet,
+    forcer_statut,
+)
 from .fichiers import docx_renomme_en_pdf, pdf_valide
 
 pytestmark = pytest.mark.django_db
@@ -327,7 +333,7 @@ def test_supprimer_brouillon_efface_versions_et_fichiers(django_capture_on_commi
 @pytest.mark.parametrize("statut", [s for s in Statut.values if s != Statut.BROUILLON])
 def test_suppression_refusee_hors_brouillon(statut):
     production, etudiant, _ = depot_complet()
-    Production.objects.filter(pk=production.pk).update(statut=statut)
+    forcer_statut(production, statut)
     with pytest.raises(services.TransitionInterdite):
         services.supprimer_brouillon(etudiant, production)
     assert Production.objects.filter(pk=production.pk).exists()
