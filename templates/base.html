@@ -1,0 +1,55 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titre %}SIGAPS{% endblock %} · SIGAPS</title>
+  <meta name="description" content="{% block description %}Dépôt, validation et archivage des mémoires et thèses.{% endblock %}">
+  <link rel="stylesheet" href="{% static 'css/sigaps.css' %}">
+  {% block entete_supplementaire %}{% endblock %}
+</head>
+<body class="flex min-h-screen flex-col">
+  <a href="#contenu" class="lien-evitement">Aller au contenu</a>
+
+  <header class="bg-nuit-900 text-white">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <a href="{% url 'accueil' %}" class="text-lg font-semibold text-white no-underline">
+        SIGAPS<span class="sr-only"> — accueil</span>
+      </a>
+      <nav aria-label="Navigation principale">
+        <ul class="flex flex-wrap items-center gap-4 text-sm">
+          {% block navigation %}
+          <li><a href="{% url 'accueil' %}" class="text-white">Rechercher</a></li>
+          {% if user.is_authenticated %}
+          <li><span class="text-nuit-100">{{ user }}</span></li>
+          {% endif %}
+          {% endblock %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  {% if messages %}
+  <div class="mx-auto w-full max-w-5xl px-4 pt-4" role="status" aria-live="polite">
+    <ul class="space-y-2">
+      {% for message in messages %}
+      <li class="rounded border-l-4 px-4 py-2 {% if message.level_tag == 'error' %}border-red-700 bg-red-50 text-red-900{% elif message.level_tag == 'success' %}border-green-700 bg-green-50 text-green-900{% else %}border-nuit-500 bg-nuit-50 text-nuit-900{% endif %}">
+        {{ message }}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <main id="contenu" tabindex="-1" class="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+    {% block contenu %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-gris-300 bg-white">
+    <div class="mx-auto max-w-5xl px-4 py-4 text-sm text-gris-600">
+      SIGAPS — Gestion, validation et archivage des productions académiques
+    </div>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

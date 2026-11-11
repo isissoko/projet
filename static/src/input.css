@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* Fichiers analysés pour générer les classes utilisées. */
+@source "../../templates";
+@source "../../**/templates";
+
+/* Palette sobre : bleu nuit, une couleur d'accent (ocre), gris. Contrastes AA vérifiés sur blanc. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-nuit-50: #eef2f8;
+  --color-nuit-100: #d6dfee;
+  --color-nuit-200: #adbfdc;
+  --color-nuit-500: #3a5a8c;
+  --color-nuit-700: #1e3557;
+  --color-nuit-800: #16294a;
+  --color-nuit-900: #0f1d36;
+
+  --color-accent-100: #fbecd3;
+  --color-accent-500: #d08a1f;
+  --color-accent-600: #a96c12; /* 4,6:1 sur blanc */
+  --color-accent-700: #87550c;
+
+  --color-gris-50: #f7f8fa;
+  --color-gris-100: #eceef2;
+  --color-gris-300: #c9ced7;
+  --color-gris-500: #6b7280;
+  --color-gris-600: #4b5563;
+  --color-gris-800: #1f2937;
+}
+
+@layer base {
+  html {
+    @apply bg-gris-50 text-gris-800 antialiased;
+  }
+
+  /* Focus toujours visible pour la navigation au clavier. */
+  :focus-visible {
+    @apply outline-3 outline-offset-2 outline-accent-500;
+  }
+
+  a {
+    @apply text-nuit-700 underline-offset-2 hover:underline;
+  }
+}
+
+@layer components {
+  .lien-evitement {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50
+      focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-nuit-900 focus:shadow;
+  }
+}
