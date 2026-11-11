@@ -45,3 +45,61 @@
   compte ; lien entre `archiver` et `VerificationDocumentaire` ; retour de
   A_CORRIGER_BIBLIOTHEQUE vers VALIDE sans repasser par le directeur ; droits de modification des
   métadonnées ; champs propres aux thèses ; forme des sauvegardes (BF22) ; Gunicorn (phase 10).
+
+## Phase 1 — Comptes et référentiel (11 novembre 2026)
+
+### Fait
+- **Rôles** : groupes `ETUDIANT`, `ENSEIGNANT`, `BIBLIOTHECAIRE`, `ADMINISTRATEUR` créés par la
+  migration de données `comptes/0003`. `Utilisateur.a_role(nom)` et `a_un_role(*noms)` lisent les
+  groupes une seule fois par instance et renvoient faux pour un compte désactivé.
+- **Profils** : `ProfilEtudiant` (matricule unique normalisé en majuscules sans espaces, niveau,
+  filière) et `ProfilEnseignant` (grade, spécialité, département), en OneToOne.
+- **Référentiel** : `Etablissement`, `Departement` (code unique par établissement), `Filiere`
+  (code unique), `AnneeAcademique` (une seule courante par `UniqueConstraint` conditionnelle,
+  `CheckConstraint` sur les dates, libellé `AAAA-AAAA`), `Domaine` (hiérarchique, cycles refusés
+  par validation, auto-référence refusée en base), `MotCle` (unique insensible à la casse en
+  base). Tous ont un champ `actif`.
+- **Services** : `comptes/services.py` (créer, modifier, rôles, activation, premier
+  administrateur) et `referentiel/services.py` (année courante sous `select_for_update`,
+  enregistrement, suppression ou désactivation, réactivation), tous en `transaction.atomic`.
+- **Authentification** : vues Django intégrées avec gabarits français (connexion, déconnexion
+  en POST, mot de passe oublié en 4 écrans) ; django-axes 8.3.1, page de blocage stylée (429).
+- **`RoleRequisMixin`** : redirection vers la connexion pour un visiteur, page 403 stylée pour un
+  rôle manquant. L'objet demandé n'est chargé qu'après le contrôle du rôle (un tiers reçoit 403,
+  pas 404, et n'apprend donc pas si l'objet existe).
+- **Interfaces** : gestion des comptes (liste avec recherche et filtres rôle/état, création avec
+  profils, modification, activation) et gestion générique des 6 éléments du référentiel
+  (`referentiel/registre.py`), menu de `base.html` selon les rôles.
+- **Composants** (`templates/composants/`) : champ (avec `aria-invalid` et `aria-describedby`
+  de Django 5.2), erreurs de formulaire, bouton, tableau, pagination, état vide, modale de
+  confirmation (`<dialog>` + `static/js/modale.js`, 40 lignes, sans dépendance).
+- **Admin Django** : tous les modèles enregistrés, profils en ligne sur l'utilisateur.
+- **Commande** `creer_admin` (interactive, valide l'e-mail et le mot de passe).
+- **Tests** : 106 tests, couverture 96 % sur comptes et référentiel.
+
+### Décisions
+- **Création de compte** : l'administrateur ne saisit pas de mot de passe. Le compte reçoit un
+  mot de passe inutilisable et un e-mail d'invitation avec un lien de réinitialisation (3 jours).
+  « Mot de passe oublié » accepte aussi ces comptes (formulaire `ReinitialisationForm`).
+- **django-axes** : blocage sur le couple (e-mail, IP) pour qu'un tiers ne puisse pas bloquer le
+  compte de quelqu'un d'autre ; levée après 30 minutes ; compteur remis à zéro après un succès.
+  L'identifiant compté est l'e-mail normalisé (`comptes/securite.py`). Version 8.3.1 car la
+  9.0.0 (30 octobre) a moins de deux semaines.
+- **Auto-protection** : un administrateur ne peut ni retirer son rôle Administrateur ni
+  désactiver son propre compte (service + vue + test).
+- **Profils** : un profil n'est jamais supprimé quand on retire le rôle (historique conservé).
+  Retirer le rôle Étudiant laisse le profil en place mais `a_role` devient faux.
+- **Exception métier** : `comptes.exceptions.ActionInterdite`, affichée comme erreur de
+  formulaire ou message.
+- **Formulaire d'année** : cocher « année courante » bascule l'ancienne via le service ; la
+  contrainte d'unicité est donc exclue de la validation du formulaire (elle reste en base).
+- **Modale** : sans JavaScript, le formulaire est envoyé directement (pas de blocage).
+
+### Points ouverts
+- **Proxy et IP réelle** : sans django-ipware (non autorisé), axes lit `REMOTE_ADDR`. Derrière
+  Nginx, il faudra un `AXES_CLIENT_IP_CALLABLE` lisant `X-Real-IP` posé par Nginx (phase 10),
+  sinon tous les visiteurs partageront l'IP 127.0.0.1.
+- Le texte « 30 minutes » de la page de blocage est écrit en dur ; à relier au réglage si la
+  durée change.
+- Questions C à L de la phase 0 toujours en attente (notamment F : encadrants externes, qui
+  pourront être des comptes inactifs avec un profil enseignant).

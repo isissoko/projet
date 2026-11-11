@@ -11,7 +11,7 @@ Node.js), templates Django.
 | Phase | Contenu | État |
 |---|---|---|
 | 0 | Socle : settings, PostgreSQL, Tailwind, utilisateur personnalisé, tests | ✅ terminée |
-| 1 | Comptes et référentiel | à venir |
+| 1 | Comptes, rôles, authentification, référentiel | ✅ terminée |
 | 2 → 10 | Dépôt, évaluation, archivage, recherche, journal, statistiques, import, annotations, durcissement | à venir |
 
 Le détail des décisions se trouve dans [docs/JOURNAL.md](docs/JOURNAL.md) ; le cahier des charges
@@ -31,7 +31,7 @@ cp .env.example .env        # puis renseigner SECRET_KEY
 make db                     # démarre PostgreSQL (port 5433 sur la machine)
 make migrer                 # applique les migrations
 make css                    # télécharge Tailwind v4 (une fois) et compile static/css/sigaps.css
-.venv/bin/python manage.py createsuperuser   # connexion par adresse e-mail
+.venv/bin/python manage.py creer_admin       # premier administrateur (interactif)
 make serveur                # http://127.0.0.1:8001
 ```
 
@@ -49,12 +49,32 @@ Pendant le développement de l'interface, `make css-watch` recompile le CSS à c
 | `make lint` | `ruff check` et vérification du formatage |
 | `make format` | formate et corrige automatiquement |
 
+## Rôles et accès
+
+Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNANT`,
+`BIBLIOTHECAIRE`, `ADMINISTRATEUR`. Un compte peut en cumuler plusieurs.
+
+| Espace | URL | Rôles |
+|---|---|---|
+| Connexion, mot de passe oublié | `/comptes/connexion/`, `/comptes/mot-de-passe-oublie/` | tous |
+| Gestion des comptes | `/comptes/gestion/` | Administrateur |
+| Référentiel | `/referentiel/` | Bibliothécaire, Administrateur |
+| Admin Django (dépannage) | `/admin/` | superutilisateur |
+
+- Connexion par adresse e-mail ; blocage de 30 minutes après 5 échecs pour un même couple
+  (e-mail, adresse IP) grâce à django-axes. Pour débloquer : `manage.py axes_reset`.
+- Un compte créé par l'administrateur n'a pas de mot de passe : la personne reçoit un lien
+  (valable 3 jours) pour le choisir. En développement, les e-mails s'affichent dans la console.
+- Un administrateur ne peut ni retirer son propre rôle Administrateur ni désactiver son compte.
+- Un élément du référentiel déjà utilisé est désactivé au lieu d'être supprimé.
+
 ## Organisation
 
 ```
 config/settings/   base.py, dev.py, test.py, prod.py
-comptes/           utilisateur personnalisé (connexion par e-mail)
-templates/         base.html et pages
+comptes/           utilisateur, rôles, profils, authentification, gestion des comptes
+referentiel/       établissements, départements, filières, années, domaines, mots-clés
+templates/         base.html, pages, composants/ (champ, bouton, tableau, pagination…)
 static/src/        input.css (thème Tailwind via @theme)
 scripts/           tailwind.sh (téléchargement vérifié + compilation)
 docs/              journal de bord et documentation
