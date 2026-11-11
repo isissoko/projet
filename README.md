@@ -12,7 +12,8 @@ Node.js), templates Django.
 |---|---|---|
 | 0 | Socle : settings, PostgreSQL, Tailwind, utilisateur personnalisé, tests | ✅ terminée |
 | 1 | Comptes, rôles, authentification, référentiel | ✅ terminée |
-| 2 → 10 | Dépôt, évaluation, archivage, recherche, journal, statistiques, import, annotations, durcissement | à venir |
+| 2 | Dépôt : modèles, validation PDF, versions, automate, dépôt en étapes | ✅ terminée |
+| 3 → 10 | Dépôt, évaluation, archivage, recherche, journal, statistiques, import, annotations, durcissement | à venir |
 
 Le détail des décisions se trouve dans [docs/JOURNAL.md](docs/JOURNAL.md) ; le cahier des charges
 dans [CLAUDE.md](CLAUDE.md).
@@ -57,6 +58,8 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
 | Espace | URL | Rôles |
 |---|---|---|
 | Connexion, mot de passe oublié | `/comptes/connexion/`, `/comptes/mot-de-passe-oublie/` | tous |
+| Mes dépôts, dépôt en 5 étapes | `/depots/` | Étudiant |
+| Détail d'un dépôt | `/depots/<id>/` | auteurs, encadrants, bibliothécaires, administrateurs (sinon 404) |
 | Gestion des comptes | `/comptes/gestion/` | Administrateur |
 | Référentiel | `/referentiel/` | Bibliothécaire, Administrateur |
 | Admin Django (dépannage) | `/admin/` | superutilisateur |
@@ -68,12 +71,28 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
 - Un administrateur ne peut ni retirer son propre rôle Administrateur ni désactiver son compte.
 - Un élément du référentiel déjà utilisé est désactivé au lieu d'être supprimé.
 
+## Dépôt d'un travail
+
+- **Fichier** : PDF uniquement, 50 Mo au maximum. Le contrôle porte sur la taille, la signature
+  `%PDF-` et l'ouverture par pypdf ; l'extension ne suffit pas. Les PDF protégés par mot de
+  passe sont refusés. L'empreinte SHA-256 est calculée par blocs de 64 Ko.
+- **Stockage** : les fichiers sont rangés dans `prive/versions/<uuid>.pdf` (hors MEDIA public,
+  sans URL directe). Chaque envoi crée une nouvelle version ; une version n'est jamais supprimée.
+- **Soumission** : il faut une version, les métadonnées (titre, résumé, langue, filière, année,
+  domaine, niveau pour un mémoire), au moins un mot-clé, un directeur et un auteur principal.
+  La date de soutenance et la mention sont facultatives à ce stade.
+- **Automate** : la table complète des transitions est dans `productions/services.py`
+  (`TRANSITIONS`). Une transition non prévue renvoie une page 409.
+- **Suppression** : seul l'auteur principal peut supprimer un brouillon, avec ses versions et
+  leurs fichiers ; c'est impossible dès que le travail a été soumis.
+
 ## Organisation
 
 ```
 config/settings/   base.py, dev.py, test.py, prod.py
 comptes/           utilisateur, rôles, profils, authentification, gestion des comptes
 referentiel/       établissements, départements, filières, années, domaines, mots-clés
+productions/       modèles, validators.py (PDF), services.py (automate), acces.py (droits)
 templates/         base.html, pages, composants/ (champ, bouton, tableau, pagination…)
 static/src/        input.css (thème Tailwind via @theme)
 scripts/           tailwind.sh (téléchargement vérifié + compilation)

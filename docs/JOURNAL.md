@@ -103,3 +103,89 @@
   durée change.
 - Questions C à L de la phase 0 toujours en attente (notamment F : encadrants externes, qui
   pourront être des comptes inactifs avec un profil enseignant).
+
+## Phase 2 — Dépôt (11 novembre 2026)
+
+### Fait
+- **Modèles** (`productions/models.py`) : `Production` concrète, `Memoire` et `These` par héritage
+  multi-tables, `VersionDocument`, `Contributeur`, `Contribution`, `Encadrement`, et les
+  énumérations `Statut`, `TypeProduction`, `NiveauAcces`, `Langue`, `Mention`, `NiveauMemoire`.
+- **Contraintes en base** :
+  - un seul directeur par production, un seul auteur principal, rang unique ;
+  - un contributeur et un enseignant au plus une fois par production ;
+  - numéro de version unique par production, empreinte au format hexadécimal sur 64 caractères ;
+  - mémoire de niveau Licence ou Master uniquement ;
+  - mentions Honorable et Très honorable interdites pour un mémoire, mentions de mémoire
+    interdites pour une thèse.
+- **Versions** : `delete()` lève `SuppressionInterdite`, sur l'instance comme sur le queryset.
+  La FK vers la production est en `PROTECT` et l'admin n'autorise ni ajout ni suppression.
+- **Stockage privé** : `productions.stockage.StockagePrive`, dont `url()` lève une erreur.
+  Les fichiers sont nommés par un UUID.
+- **Validation PDF** (`validators.py`) : taille vérifiée par `size` avant toute lecture, puis
+  signature `%PDF-`, puis ouverture par pypdf (fichier lisible, au moins une page, non
+  chiffré). Empreinte SHA-256 par blocs de 64 Ko.
+- **Automate** (`services.py`) :
+  - table complète des 9 transitions et `TRANSITIONS_AVEC_MOTIF` ;
+  - `changer_statut` verrouille la ligne, vérifie la transition et le motif, met à jour les
+    dates, puis appelle un point d'extension marqué pour la phase 6 ;
+  - `TransitionInterdite` est convertie en page 409 par `productions.middleware`.
+- **Services de dépôt** : `creer_brouillon`, `modifier_brouillon`, `ajouter_coauteur`,
+  `retirer_coauteur`, `ajouter_encadrant`, `retirer_encadrant`, `ajouter_version`,
+  `supprimer_brouillon`, `soumettre` et `elements_manquants`.
+- **Accès** (`acces.py`) : `peut_voir_fiche`, `peut_modifier_brouillon`, `mes_depots` et
+  `productions_visibles`. Les vues de détail et d'étape renvoient 404 à un tiers.
+- **Interface** :
+  - dépôt en 5 étapes, avec barre de progression et brouillon enregistré à chaque étape ;
+  - recherche d'enseignant sans JavaScript ;
+  - aperçu du fichier choisi (`static/js/fichier.js`) ;
+  - Mes dépôts (cartes), page de détail (versions, chronologie, actions), suppression avec la
+    modale de confirmation ;
+  - composants `badge_statut`, `carte_production`, `chronologie` et `progression_depot`,
+    filtre `|taille` (« 2,4 Mo »).
+- **Tests** : 279 au total. Couverture : `services.py` 92 %, `acces.py` 100 %,
+  `validators.py` 95 %.
+
+### Décisions
+- **Q1 Mentions** : Passable, Assez bien, Bien et Très bien pour les mémoires ; Honorable et
+  Très honorable pour les thèses ; pas de « félicitations du jury ».
+- **Q2 Suppression d'un brouillon** : `supprimer_brouillon` est le seul chemin qui efface les
+  versions d'un brouillon jamais soumis, par `_supprimer_versions_d_un_brouillon`. Les fichiers
+  sont effacés après la validation de la transaction. Partout ailleurs, la suppression d'une
+  version est refusée.
+- **Q3 Chronologie** : construite à partir des dates (création, versions, soumission,
+  archivage) ; elle sera branchée sur `JournalAction` en phase 6.
+- **Q4** :
+  - date de soutenance et mention facultatives à la soumission ;
+  - PDF chiffrés refusés ;
+  - seul l'auteur principal modifie, soumet ou supprime le dépôt ; un co-auteur relié à un
+    compte peut le consulter.
+- **Champ `type_production`** : technique, non modifiable, fixé dès la construction de
+  l'objet. Il permet d'exprimer la règle RG12 sur les mentions par une contrainte sur la seule
+  table `Production`, et servira au filtre « type » de la recherche.
+- **Type figé** : le type d'un brouillon ne change pas après sa création ; pour en changer,
+  il faut supprimer le brouillon.
+- **`niveau_acces` et `mention`** : nuls tant que la valeur n'est pas fixée. Ruff est
+  neutralisé localement sur ces deux champs, avec un commentaire qui l'explique.
+- **`lot_import`** : ajouté en phase 8, avec le modèle `LotImport`.
+- **`VersionDocument.depose_par`** : champ ajouté pour la traçabilité, en plus de ceux de
+  CLAUDE.md.
+- **Contrôles sur l'état réel** : tous les services relisent la production sous
+  `select_for_update` et font leurs vérifications sur cette relecture, pas sur l'instance
+  passée par l'appelant, qui peut être périmée. Un test couvre ce cas.
+
+### Corrections de la phase 1
+- Les formulaires de modification n'étaient pas préremplis, parce que `FormView` transmet
+  `initial={}` et que `setdefault` n'avait donc aucun effet. Les valeurs sont maintenant
+  fusionnées, dans le formulaire de compte comme dans celui du dépôt. Un test de
+  non-régression a été ajouté.
+- Avec `base_url=None`, le stockage privé reprenait `MEDIA_URL`. Il est remplacé par
+  `StockagePrive`, sans URL. Le test du socle a été adapté.
+
+### Points ouverts
+- Si la transaction est annulée après l'écriture d'un fichier, ce fichier reste sur le disque
+  sans ligne en base. Cas rare ; il sera détecté par `verifier_integrite` (phase 10).
+- La limite de 50 Mo devra aussi être posée côté Nginx (`client_max_body_size`) en phase 10,
+  pour couper l'envoi plus tôt.
+- Pour l'instant, le lien « ← Mes dépôts » de la page de détail ne sert qu'aux étudiants. Les
+  encadrants auront leur propre liste en phase 3.
+- Questions C, E, F, G, H, I, J, K et L de la phase 0 : toujours en attente (Q1 a répondu à D).
