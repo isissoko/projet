@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titre %}Comptes{% endblock %}
+{% block contenu %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="titre-page">Comptes</h1>
+  {% url 'comptes:creer' as url_creer %}{% include "composants/bouton.html" with url=url_creer libelle="Nouveau compte" %}
+</div>
+
+<form method="get" class="carte mb-4 grid gap-x-4 sm:grid-cols-4 sm:items-end" role="search" aria-label="Filtrer les comptes">
+  <div class="sm:col-span-2">{% include "composants/champ.html" with champ=recherche.q %}</div>
+  {% include "composants/champ.html" with champ=recherche.role %}
+  {% include "composants/champ.html" with champ=recherche.actif %}
+  <div class="flex gap-3 sm:col-span-4">
+    {% include "composants/bouton.html" with libelle="Filtrer" variante="secondaire" %}
+    {% if parametres %}{% url 'comptes:liste' as url_liste %}{% include "composants/bouton.html" with url=url_liste libelle="Réinitialiser" variante="discret" %}{% endif %}
+  </div>
+</form>
+
+<p class="mb-2 text-sm text-gris-600" aria-live="polite">{{ paginator.count }} compte{{ paginator.count|pluralize }}</p>
+
+{% if lignes %}
+{% include "composants/tableau.html" with legende="Liste des comptes" entetes=entetes lignes=lignes gabarit_actions="comptes/_actions_compte.html" %}
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun compte ne correspond" message="Modifiez les filtres ou créez un nouveau compte." %}
+{% endif %}
+{% endblock %}

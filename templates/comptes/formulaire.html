@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm"><a href="{% url 'comptes:liste' %}">← Comptes</a></p>
+<h1 class="titre-page mb-4">{{ titre }}</h1>
+
+{% include "composants/erreurs_formulaire.html" %}
+
+<form method="post" novalidate class="space-y-4">
+  {% csrf_token %}
+  <section class="carte" aria-labelledby="titre-identite">
+    <h2 id="titre-identite" class="mb-3 text-lg font-semibold text-nuit-900">Identité</h2>
+    <div class="grid gap-x-4 sm:grid-cols-2">
+      {% include "composants/champ.html" with champ=form.prenom %}
+      {% include "composants/champ.html" with champ=form.nom %}
+    </div>
+    {% include "composants/champ.html" with champ=form.email %}
+    {% if not compte %}<p class="champ-aide">Un e-mail invitera la personne à choisir son mot de passe.</p>{% endif %}
+  </section>
+
+  <section class="carte" aria-labelledby="titre-roles">
+    <h2 id="titre-roles" class="mb-3 text-lg font-semibold text-nuit-900">Rôles</h2>
+    {% include "composants/champ.html" with champ=form.roles %}
+    {% if compte and compte.pk == user.pk %}<p class="champ-aide">Vous ne pouvez pas retirer votre propre rôle Administrateur.</p>{% endif %}
+  </section>
+
+  <section class="carte" aria-labelledby="titre-etudiant">
+    <h2 id="titre-etudiant" class="text-lg font-semibold text-nuit-900">Profil étudiant</h2>
+    <p class="mb-3 champ-aide">Obligatoire si le rôle Étudiant est coché.</p>
+    <div class="grid gap-x-4 sm:grid-cols-3">
+      {% include "composants/champ.html" with champ=form.matricule %}
+      {% include "composants/champ.html" with champ=form.niveau %}
+      {% include "composants/champ.html" with champ=form.filiere %}
+    </div>
+  </section>
+
+  <section class="carte" aria-labelledby="titre-enseignant">
+    <h2 id="titre-enseignant" class="text-lg font-semibold text-nuit-900">Profil enseignant</h2>
+    <p class="mb-3 champ-aide">Obligatoire si le rôle Enseignant est coché.</p>
+    <div class="grid gap-x-4 sm:grid-cols-3">
+      {% include "composants/champ.html" with champ=form.grade %}
+      {% include "composants/champ.html" with champ=form.specialite %}
+      {% include "composants/champ.html" with champ=form.departement %}
+    </div>
+  </section>
+
+  <div class="flex flex-wrap gap-3">
+    {% include "composants/bouton.html" with libelle="Enregistrer" %}
+    {% url 'comptes:liste' as url_liste %}{% include "composants/bouton.html" with url=url_liste libelle="Annuler" variante="secondaire" %}
+  </div>
+</form>
+{% endblock %}

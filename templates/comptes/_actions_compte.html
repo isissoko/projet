@@ -1,0 +1,12 @@
+<div class="flex justify-end gap-1">
+  <a href="{% url 'comptes:modifier' element.pk %}" class="bouton bouton-discret">Modifier<span class="sr-only"> {{ element }}</span></a>
+  {% if element.pk != user.pk %}
+  <form method="post" action="{% url 'comptes:activation' element.pk %}"
+        {% if element.is_active %}data-confirmation="Désactiver le compte de {{ element }} ? La personne ne pourra plus se connecter." data-confirmation-bouton="Désactiver"{% endif %}>
+    {% csrf_token %}
+    <input type="hidden" name="suivant" value="{{ suivant }}">
+    <input type="hidden" name="actif" value="{% if element.is_active %}0{% else %}1{% endif %}">
+    <button type="submit" class="bouton bouton-discret">{% if element.is_active %}Désactiver{% else %}Réactiver{% endif %}<span class="sr-only"> {{ element }}</span></button>
+  </form>
+  {% endif %}
+</div>
