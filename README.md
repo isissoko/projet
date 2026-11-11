@@ -13,7 +13,8 @@ Node.js), templates Django.
 | 0 | Socle : settings, PostgreSQL, Tailwind, utilisateur personnalisé, tests | ✅ terminée |
 | 1 | Comptes, rôles, authentification, référentiel | ✅ terminée |
 | 2 | Dépôt : modèles, validation PDF, versions, automate, dépôt en étapes | ✅ terminée |
-| 3 → 10 | Dépôt, évaluation, archivage, recherche, journal, statistiques, import, annotations, durcissement | à venir |
+| 3 | Évaluation par l'encadreur, version corrigée, téléchargement contrôlé | ✅ terminée |
+| 4 → 10 | Dépôt, évaluation, archivage, recherche, journal, statistiques, import, annotations, durcissement | à venir |
 
 Le détail des décisions se trouve dans [docs/JOURNAL.md](docs/JOURNAL.md) ; le cahier des charges
 dans [CLAUDE.md](CLAUDE.md).
@@ -60,6 +61,9 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
 | Connexion, mot de passe oublié | `/comptes/connexion/`, `/comptes/mot-de-passe-oublie/` | tous |
 | Mes dépôts, dépôt en 5 étapes | `/depots/` | Étudiant |
 | Détail d'un dépôt | `/depots/<id>/` | auteurs, encadrants, bibliothécaires, administrateurs (sinon 404) |
+| Travaux à évaluer, écran d'évaluation | `/evaluation/` | Enseignant encadrant (sinon 404) |
+| Version corrigée | `/depots/<id>/version-corrigee/` | Auteur principal |
+| Ouvrir un PDF | `/depots/<id>/versions/<n>/telecharger/` | selon `acces.peut_telecharger` |
 | Gestion des comptes | `/comptes/gestion/` | Administrateur |
 | Référentiel | `/referentiel/` | Bibliothécaire, Administrateur |
 | Admin Django (dépannage) | `/admin/` | superutilisateur |
@@ -83,6 +87,15 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
   La date de soutenance et la mention sont facultatives à ce stade.
 - **Automate** : la table complète des transitions est dans `productions/services.py`
   (`TRANSITIONS`). Une transition non prévue renvoie une page 409.
+- **Évaluation** : seul l'avis du directeur change le statut (favorable → validé, corrections
+  demandées → à corriger, défavorable → rejeté, définitif). L'avis d'un co-directeur est
+  consultatif. Un motif est obligatoire pour demander des corrections ou rejeter. Chaque
+  encadrant donne au plus un avis par version ; les avis ne sont jamais modifiés ni supprimés.
+- **Version corrigée** : un nouveau PDF obligatoire, accompagné d'une note facultative ; le
+  travail repart chez le directeur. Les versions précédentes restent consultables.
+- **Téléchargement** : uniquement par la vue contrôlée (`FileResponse`, ou `X-Accel-Redirect`
+  si `X_ACCEL_REDIRECT=True`). Pour un travail non archivé, seuls ses auteurs, ses encadrants,
+  les bibliothécaires et les administrateurs y ont accès.
 - **Suppression** : seul l'auteur principal peut supprimer un brouillon, avec ses versions et
   leurs fichiers ; c'est impossible dès que le travail a été soumis.
 

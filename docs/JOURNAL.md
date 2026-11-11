@@ -189,3 +189,58 @@
 - Pour l'instant, le lien « ← Mes dépôts » de la page de détail ne sert qu'aux étudiants. Les
   encadrants auront leur propre liste en phase 3.
 - Questions C, E, F, G, H, I, J, K et L de la phase 0 : toujours en attente (Q1 a répondu à D).
+
+## Phase 3 — Évaluation et version corrigée (11 novembre 2026)
+
+### Fait
+- **Modèle `AvisEncadrement`** : production, encadrement, version évaluée (`PROTECT`), avis,
+  commentaire, date.
+  - Contraintes en base : motif non vide sauf pour un avis favorable (RG07), valeur d'avis
+    valide, un seul avis par encadrant et par version.
+  - `delete()` refusé, sur l'instance comme sur le queryset ; admin en lecture seule.
+- **`VersionDocument.note_corrections`** : ce que l'auteur dit avoir corrigé.
+- **Services** :
+  - `donner_avis` : verrou, statut SOUMIS exigé (sinon 409), encadrant enseignant actif,
+    motif, version courante. Seul l'avis du directeur appelle `changer_statut`. Point
+    d'extension `_apres_avis_consultatif` marqué pour la phase 6.
+  - `soumettre_version_corrigee` : A_CORRIGER_ENCADREUR → SOUMIS ou
+    A_CORRIGER_BIBLIOTHEQUE → VALIDE ; nouveau PDF obligatoire et validé ; réservé à
+    l'auteur principal.
+  - `motif_corrections`, et `enregistrer_telechargement` (point d'extension pour RG08).
+- **Accès** : `peut_evaluer` ; `peut_telecharger`, première version réservée aux proches ;
+  `travaux_encadres`, annoté avec le rôle et « avis déjà donné sur la version courante » par
+  sous-requêtes ; `nombre_a_evaluer`.
+- **Vues** :
+  - Travaux à évaluer : onglets À évaluer, En correction et Traités ; compteur dans le menu.
+  - Écran d'évaluation : document, PDF, versions, historique, formulaire, mention
+    « consultatif » pour un co-directeur, modale de confirmation.
+  - Version corrigée : motif mis en évidence, aperçu du fichier, note.
+  - Téléchargement : 404 pour un tiers, `FileResponse` en affichage dans le navigateur,
+    `Cache-Control: private, no-store`, `X-Accel-Redirect` en option.
+  - Page de détail : avis, motif, boutons selon le rôle, avis dans la chronologie, lien de
+    retour adapté à la personne.
+- **Tests** : 344 au total, dont 65 nouveaux. Couverture : `services.py` 92 %, `acces.py` 98 %,
+  `validators.py` 95 %.
+
+### Décisions
+- **Q1** : le téléchargement est écrit dès cette phase, parce que l'encadreur doit lire le PDF.
+  `peut_telecharger` sera complété en phase 4 (niveaux d'accès, embargo).
+- **Q2** : REJETE est définitif ; l'étudiant fait un nouveau dépôt.
+- **Q3** : la version corrigée exige un nouveau PDF et accepte une note facultative ; les
+  métadonnées ne sont pas modifiables pendant les corrections (BF12 reste ouvert).
+- **Q4** : les auteurs voient tous les avis, y compris ceux des co-directeurs.
+- **Co-directeur** : un seul avis par version, uniquement tant que le travail est SOUMIS ;
+  après la décision du directeur, toute tentative renvoie 409.
+- **Accès à l'évaluation** : un enseignant qui n'encadre pas le travail reçoit 404, et un
+  utilisateur sans le rôle ENSEIGNANT reçoit 403 (`RoleRequisMixin`). Un brouillon n'est
+  jamais présenté à l'évaluation.
+- **Chronologie** : `date_soumission` ne garde que la dernière soumission ; l'historique
+  complet viendra du `JournalAction` en phase 6.
+
+### Points ouverts
+- La chronologie sera reconstruite à partir de `JournalAction` en phase 6, avec toutes les
+  soumissions successives.
+- Notifications (directeur averti d'un avis consultatif, étudiant averti d'une décision) :
+  phase 6, aux points d'extension marqués.
+- `peut_telecharger` pour les travaux archivés : phase 4.
+- Questions C, F, G, I, J, K et L de la phase 0 toujours en attente.
