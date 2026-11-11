@@ -1,0 +1,24 @@
+<div class="flex justify-end gap-1">
+  <a href="{% url 'referentiel:modifier' type.slug element.pk %}" class="bouton bouton-discret">Modifier<span class="sr-only"> {{ element }}</span></a>
+  {% if element.actif %}
+  {% if type.slug == "annees" and not element.courante %}
+  <form method="post" action="{% url 'referentiel:action' type.slug element.pk 'courante' %}"
+        data-confirmation="Faire de {{ element }} l'année courante ?" data-confirmation-bouton="Confirmer">
+    {% csrf_token %}
+    <button type="submit" class="bouton bouton-discret">Rendre courante<span class="sr-only"> {{ element }}</span></button>
+  </form>
+  {% endif %}
+  {% if not element.courante %}
+  <form method="post" action="{% url 'referentiel:action' type.slug element.pk 'supprimer' %}"
+        data-confirmation="Supprimer « {{ element }} » ? S'il est déjà utilisé, il sera seulement désactivé." data-confirmation-bouton="Supprimer">
+    {% csrf_token %}
+    <button type="submit" class="bouton bouton-discret">Supprimer<span class="sr-only"> {{ element }}</span></button>
+  </form>
+  {% endif %}
+  {% else %}
+  <form method="post" action="{% url 'referentiel:action' type.slug element.pk 'reactiver' %}">
+    {% csrf_token %}
+    <button type="submit" class="bouton bouton-discret">Réactiver<span class="sr-only"> {{ element }}</span></button>
+  </form>
+  {% endif %}
+</div>

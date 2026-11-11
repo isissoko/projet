@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titre %}Référentiel{% endblock %}
+{% block contenu %}
+<h1 class="titre-page mb-2">Référentiel</h1>
+<p class="mb-4 text-gris-600">
+  Année académique courante :
+  {% if annee_courante %}<strong class="text-nuit-900">{{ annee_courante }}</strong>{% else %}<strong class="text-red-700">aucune</strong> — <a href="{% url 'referentiel:liste' 'annees' %}">en définir une</a>{% endif %}
+</p>
+<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for ligne in types %}
+  <li class="carte">
+    <h2 class="text-lg font-semibold"><a href="{% url 'referentiel:liste' ligne.type.slug %}">{{ ligne.type.titre }}</a></h2>
+    <p class="mt-1 text-sm text-gris-600">{{ ligne.actifs }} actif{{ ligne.actifs|pluralize }}{% if ligne.inactifs %} · {{ ligne.inactifs }} désactivé{{ ligne.inactifs|pluralize }}{% endif %}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}

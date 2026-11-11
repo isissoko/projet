@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titre %}{{ type.titre }}{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm"><a href="{% url 'referentiel:accueil' %}">← Référentiel</a></p>
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="titre-page">{{ type.titre }}</h1>
+  {% url 'referentiel:creer' type.slug as url_creer %}{% include "composants/bouton.html" with url=url_creer libelle=type.libelle_nouveau %}
+</div>
+
+<form method="get" class="carte mb-4 grid gap-x-4 sm:grid-cols-3 sm:items-end" role="search" aria-label="Filtrer">
+  <div class="champ sm:col-span-2">
+    <label for="id_q" class="champ-libelle">Rechercher</label>
+    <input type="search" name="q" id="id_q" value="{{ q }}">
+  </div>
+  <div class="champ">
+    <label for="id_etat" class="champ-libelle">État</label>
+    <select name="etat" id="id_etat">
+      <option value="actifs"{% if etat == "actifs" %} selected{% endif %}>Actifs</option>
+      <option value="inactifs"{% if etat == "inactifs" %} selected{% endif %}>Désactivés</option>
+      <option value="tous"{% if etat == "tous" %} selected{% endif %}>Tous</option>
+    </select>
+  </div>
+  <div class="sm:col-span-3">{% include "composants/bouton.html" with libelle="Filtrer" variante="secondaire" %}</div>
+</form>
+
+{% if lignes %}
+<p class="mb-2 text-sm text-gris-600">{{ paginator.count }} élément{{ paginator.count|pluralize }}</p>
+{% include "composants/tableau.html" with legende=type.titre entetes=type_entetes lignes=lignes gabarit_actions="referentiel/_actions_element.html" %}
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun élément" message="Aucun élément ne correspond à ces critères." url_action=url_creer libelle_action=type.libelle_nouveau %}
+{% endif %}
+{% endblock %}
