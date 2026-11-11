@@ -1,0 +1,11 @@
+{% autoescape off %}Bonjour {{ utilisateur.get_full_name|default:utilisateur.email }},
+
+Un compte SIGAPS vient d'être créé pour vous avec l'adresse {{ utilisateur.email }}.
+Pour l'activer, choisissez votre mot de passe en ouvrant le lien suivant (valable 3 jours) :
+
+{{ lien }}
+
+Si le lien a expiré, utilisez « Mot de passe oublié ? » sur la page de connexion.
+
+— SIGAPS
+{% endautoescape %}

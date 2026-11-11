@@ -58,10 +58,14 @@ def test_contrainte_base_insensible_a_la_casse():
         Utilisateur.objects.bulk_create([Utilisateur(email="FANTA@sigaps.test")])
 
 
-def test_connexion_par_email_insensible_a_la_casse():
+def test_connexion_par_email_insensible_a_la_casse(rf):
     UtilisateurFactory(email="kadia@sigaps.test")
-    assert authenticate(email="Kadia@SIGAPS.test", password="motdepasse-solide-42") is not None
-    assert authenticate(email="kadia@sigaps.test", password="mauvais") is None
+    requete = rf.post("/comptes/connexion/")
+    assert (
+        authenticate(requete, username="Kadia@SIGAPS.test", password="motdepasse-solide-42")
+        is not None
+    )
+    assert authenticate(requete, username="kadia@sigaps.test", password="mauvais") is None
 
 
 def test_representation_texte():

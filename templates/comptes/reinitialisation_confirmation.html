@@ -1,0 +1,17 @@
+{% extends "comptes/base_auth.html" %}
+{% block titre %}Nouveau mot de passe{% endblock %}
+{% block titre_carte %}Choisir un mot de passe{% endblock %}
+{% block carte %}
+{% if validlink %}
+{% include "composants/erreurs_formulaire.html" %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "composants/champ.html" with champ=form.new_password1 %}
+  {% include "composants/champ.html" with champ=form.new_password2 %}
+  {% include "composants/bouton.html" with libelle="Enregistrer le mot de passe" %}
+</form>
+{% else %}
+<div class="alerte alerte-erreur" role="alert">Ce lien n'est plus valable : il a déjà servi ou il a expiré.</div>
+<p>{% url 'comptes:mot_de_passe_oublie' as url_oubli %}{% include "composants/bouton.html" with url=url_oubli libelle="Demander un nouveau lien" variante="secondaire" %}</p>
+{% endif %}
+{% endblock %}

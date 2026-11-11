@@ -1,0 +1,13 @@
+{% extends "comptes/base_auth.html" %}
+{% block titre %}Mot de passe oublié{% endblock %}
+{% block titre_carte %}Mot de passe oublié{% endblock %}
+{% block carte %}
+<p class="mb-4 text-gris-600">Indiquez l'adresse e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+{% include "composants/erreurs_formulaire.html" %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include "composants/champ.html" with champ=form.email %}
+  {% include "composants/bouton.html" with libelle="Envoyer le lien" %}
+</form>
+{% endblock %}
+{% block sous_carte %}<p class="mt-4 text-sm"><a href="{% url 'comptes:connexion' %}">← Retour à la connexion</a></p>{% endblock %}

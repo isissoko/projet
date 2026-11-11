@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="mx-auto max-w-md">
+  <div class="carte">
+    <h1 class="titre-page mb-4">{% block titre_carte %}{% endblock %}</h1>
+    {% block carte %}{% endblock %}
+  </div>
+  {% block sous_carte %}{% endblock %}
+</div>
+{% endblock %}

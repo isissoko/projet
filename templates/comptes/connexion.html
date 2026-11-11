@@ -1,0 +1,16 @@
+{% extends "comptes/base_auth.html" %}
+{% block titre %}Connexion{% endblock %}
+{% block titre_carte %}Connexion{% endblock %}
+{% block carte %}
+{% include "composants/erreurs_formulaire.html" %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {% include "composants/champ.html" with champ=form.username %}
+  {% include "composants/champ.html" with champ=form.password %}
+  <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+    {% include "composants/bouton.html" with libelle="Se connecter" %}
+    <a href="{% url 'comptes:mot_de_passe_oublie' %}" class="text-sm">Mot de passe oublié ?</a>
+  </div>
+</form>
+{% endblock %}

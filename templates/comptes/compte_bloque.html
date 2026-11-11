@@ -1,0 +1,14 @@
+{% extends "comptes/base_auth.html" %}
+{% block titre %}Connexion bloquée{% endblock %}
+{% block titre_carte %}Connexion temporairement bloquée{% endblock %}
+{% block carte %}
+<div class="alerte alerte-erreur" role="alert">
+  <p>Trop de tentatives de connexion ont échoué ({{ failure_limit }} essais).</p>
+</div>
+<p class="text-gris-800">
+  Pour protéger votre compte, la connexion depuis cet appareil est suspendue
+  {% if cooloff_timedelta %}pendant 30 minutes{% else %}temporairement{% endif %}.
+  Réessayez plus tard ou réinitialisez votre mot de passe.
+</p>
+<p class="mt-4">{% url 'comptes:mot_de_passe_oublie' as url_oubli %}{% include "composants/bouton.html" with url=url_oubli libelle="Réinitialiser mon mot de passe" variante="secondaire" %}</p>
+{% endblock %}

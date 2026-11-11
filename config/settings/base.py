@@ -1,5 +1,6 @@
 """Réglages communs à tous les environnements de SIGAPS."""
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -21,7 +22,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "axes",
     # Applications SIGAPS
+    "referentiel",
     "comptes",
 ]
 
@@ -34,6 +37,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # django-axes doit rester le dernier middleware.
+    "axes.middleware.AxesMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -48,6 +53,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "comptes.context_processors.navigation",
             ],
         },
     },
@@ -62,6 +68,23 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)
 
 # Authentification
 AUTH_USER_MODEL = "comptes.Utilisateur"
+AUTHENTICATION_BACKENDS = [
+    # django-axes en premier : il bloque avant toute vérification du mot de passe.
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+LOGIN_URL = "comptes:connexion"
+LOGIN_REDIRECT_URL = "accueil"
+LOGOUT_REDIRECT_URL = "accueil"
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 jours (vaut aussi pour l'invitation)
+
+# django-axes : blocage après 5 échecs pour un couple (e-mail, adresse IP), pendant 30 minutes.
+AXES_FAILURE_LIMIT = 5
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_COOLOFF_TIME = timedelta(minutes=30)
+AXES_RESET_ON_SUCCESS = True
+AXES_USERNAME_CALLABLE = "comptes.securite.identifiant_axes"
+AXES_LOCKOUT_TEMPLATE = "comptes/compte_bloque.html"
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
