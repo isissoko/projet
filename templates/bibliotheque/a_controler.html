@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titre %}À contrôler{% endblock %}
+{% block contenu %}
+<h1 class="titre-page mb-4">Travaux à contrôler</h1>
+
+<nav aria-label="Filtrer les travaux" class="mb-4">
+  <ul class="flex flex-wrap gap-2">
+    {% for o in onglets %}
+    <li><a href="?onglet={{ o.cle }}" class="bouton {% if o.actif %}bouton-principal{% else %}bouton-secondaire{% endif %}"{% if o.actif %} aria-current="page"{% endif %}>{{ o.libelle }} <span class="badge {% if o.actif %}bg-white text-nuit-900{% else %}badge-neutre{% endif %}">{{ o.nombre }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{% if travaux %}
+<ul class="grid gap-4 sm:grid-cols-2">
+  {% for t in travaux %}
+  <li>
+    <article class="carte flex h-full flex-col gap-2">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="badge badge-neutre">{{ t.get_type_production_display }}</span>
+        {% include "composants/badge_statut.html" with production=t %}
+      </div>
+      <h2 class="text-base font-semibold leading-snug"><a href="{% url 'bibliotheque:controle' t.pk %}">{{ t.titre }}</a></h2>
+      <p class="text-sm text-gris-600">{{ t.filiere|default:"Filière non renseignée" }} — {{ t.annee_academique|default:"année non renseignée" }}</p>
+      <p class="mt-auto text-sm text-gris-600">Dernière modification le {{ t.date_modification|date:"j F Y" }}</p>
+    </article>
+  </li>
+  {% endfor %}
+</ul>
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun travail dans cette catégorie" message="Les travaux validés par leur directeur apparaissent ici." %}
+{% endif %}
+{% endblock %}

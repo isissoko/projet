@@ -1,0 +1,32 @@
+{% comment %}Champs du formulaire de métadonnées (dépôt et bibliothèque). Paramètre : form.{% endcomment %}
+  <section class="carte" aria-labelledby="titre-type">
+    <h2 id="titre-type" class="mb-3 text-lg font-semibold text-nuit-900">Type de travail</h2>
+    {% include "composants/champ.html" with champ=form.type_production %}
+    {% include "composants/champ.html" with champ=form.niveau %}
+  </section>
+
+  <section class="carte" aria-labelledby="titre-description">
+    <h2 id="titre-description" class="mb-3 text-lg font-semibold text-nuit-900">Description</h2>
+    {% include "composants/champ.html" with champ=form.titre %}
+    {% include "composants/champ.html" with champ=form.resume %}
+    {% include "composants/champ.html" with champ=form.langue %}
+  </section>
+
+  <section class="carte" aria-labelledby="titre-classement">
+    <h2 id="titre-classement" class="mb-3 text-lg font-semibold text-nuit-900">Classement</h2>
+    <div class="grid gap-x-4 sm:grid-cols-3">
+      {% include "composants/champ.html" with champ=form.filiere %}
+      {% include "composants/champ.html" with champ=form.annee_academique %}
+      {% include "composants/champ.html" with champ=form.domaine %}
+    </div>
+    <div class="liste-choix">{% include "composants/champ.html" with champ=form.mots_cles %}</div>
+  </section>
+
+  <section class="carte" aria-labelledby="titre-soutenance">
+    <h2 id="titre-soutenance" class="mb-3 text-lg font-semibold text-nuit-900">Soutenance</h2>
+    <div class="grid gap-x-4 sm:grid-cols-2">
+      {% include "composants/champ.html" with champ=form.date_soutenance %}
+      {% include "composants/champ.html" with champ=form.mention %}
+    </div>
+  </section>
+

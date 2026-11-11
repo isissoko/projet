@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titre %}Catalogue{% endblock %}
+{% block contenu %}
+<h1 class="titre-page mb-4">Catalogue</h1>
+
+<form method="get" class="carte mb-4 grid gap-3 sm:grid-cols-4 sm:items-end" role="search" aria-label="Filtrer le catalogue">
+  <div class="champ sm:col-span-2">
+    <label for="id_q" class="champ-libelle">Titre ou cote</label>
+    <input type="search" name="q" id="id_q" value="{{ filtres.q }}" maxlength="100">
+  </div>
+  <div class="champ">
+    <label for="id_statut" class="champ-libelle">Statut</label>
+    <select name="statut" id="id_statut">
+      <option value="">Tous</option>
+      {% for valeur, libelle in statuts %}<option value="{{ valeur }}"{% if filtres.statut == valeur %} selected{% endif %}>{{ libelle }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="champ">
+    <label for="id_type" class="champ-libelle">Type</label>
+    <select name="type" id="id_type">
+      <option value="">Tous</option>
+      {% for valeur, libelle in types %}<option value="{{ valeur }}"{% if filtres.type == valeur %} selected{% endif %}>{{ libelle }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="sm:col-span-4">{% include "composants/bouton.html" with libelle="Filtrer" %}</div>
+</form>
+
+{% if travaux %}
+<p class="mb-2 text-sm text-gris-600">{{ paginator.count }} travail{{ paginator.count|pluralize:"aux" }}</p>
+<div class="tableau-conteneur">
+  <table class="tableau">
+    <caption class="sr-only">Travaux archivés et retirés</caption>
+    <thead><tr><th scope="col">Cote</th><th scope="col">Titre</th><th scope="col">Statut</th><th scope="col">Accès</th><th scope="col">Archivé le</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+      {% for t in travaux %}
+      <tr>
+        <th scope="row" class="whitespace-nowrap">{{ t.cote }}</th>
+        <td>{{ t.titre }}</td>
+        <td>{% include "composants/badge_statut.html" with production=t %}</td>
+        <td>{{ t.get_niveau_acces_display }}{% if t.date_fin_embargo %}<span class="block text-sm text-gris-600">Embargo jusqu'au {{ t.date_fin_embargo|date:"j F Y" }}</span>{% endif %}</td>
+        <td class="whitespace-nowrap">{{ t.date_archivage|date:"j F Y" }}</td>
+        <td class="tableau-actions"><a href="{% url 'bibliotheque:controle' t.pk %}" class="bouton bouton-discret">Gérer<span class="sr-only"> {{ t.cote }}</span></a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun travail trouvé" message="Modifiez les filtres, ou archivez des travaux depuis « À contrôler »." %}
+{% endif %}
+{% endblock %}

@@ -9,6 +9,8 @@ ENTREES_MENU = [
     ("Rechercher", "accueil", None),
     ("Mes dépôts", "productions:mes_depots", {Role.ETUDIANT}),
     ("Travaux à évaluer", "evaluation:liste", {Role.ENSEIGNANT}),
+    ("À contrôler", "bibliotheque:a_controler", {Role.BIBLIOTHECAIRE}),
+    ("Catalogue", "bibliotheque:catalogue", {Role.BIBLIOTHECAIRE}),
     ("Référentiel", "referentiel:accueil", {Role.BIBLIOTHECAIRE, Role.ADMINISTRATEUR}),
     ("Comptes", "comptes:liste", {Role.ADMINISTRATEUR}),
 ]
@@ -36,9 +38,11 @@ def navigation(request):
 
 
 def _compteur(nom_url, utilisateur):
-    """Pastille numérique de certaines entrées (travaux en attente d'avis)."""
-    if nom_url == "evaluation:liste":
-        from productions.acces import nombre_a_evaluer  # import local : évite un cycle
+    """Pastille numérique de certaines entrées (travaux en attente)."""
+    from productions import acces  # import local : évite un cycle
 
-        return nombre_a_evaluer(utilisateur)
+    if nom_url == "evaluation:liste":
+        return acces.nombre_a_evaluer(utilisateur)
+    if nom_url == "bibliotheque:a_controler":
+        return acces.nombre_a_controler(utilisateur)
     return 0

@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "referentiel",
     "comptes",
     "productions",
+    "bibliotheque",
 ]
 
 MIDDLEWARE = [

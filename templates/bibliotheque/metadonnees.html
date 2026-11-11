@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titre %}Métadonnées — {{ production.titre|truncatechars:50 }}{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm"><a href="{% url 'bibliotheque:controle' production.pk %}">← Retour au travail</a></p>
+<h1 class="titre-page mb-1">Modifier les métadonnées</h1>
+<p class="mb-4 text-gris-600">{{ production.titre }}{% if production.cote %} — cote {{ production.cote }} (inchangée){% endif %}</p>
+{% include "composants/erreurs_formulaire.html" %}
+<form method="post" novalidate class="space-y-4">
+  {% csrf_token %}
+  {% include "productions/_champs_metadonnees.html" %}
+  <div class="flex flex-wrap gap-3">
+    {% include "composants/bouton.html" with libelle="Enregistrer" %}
+    {% url 'bibliotheque:controle' production.pk as url_retour %}{% include "composants/bouton.html" with url=url_retour libelle="Annuler" variante="secondaire" %}
+  </div>
+</form>
+{% endblock %}

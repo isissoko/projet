@@ -14,13 +14,13 @@ select = ["E", "W", "F", "I", "B", "UP", "DJ", "SIM", "C4", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003", "RUF012"]  # apostrophes françaises, attributs Meta Django
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "comptes", "referentiel", "productions"]
+known-first-party = ["config", "comptes", "referentiel", "productions", "bibliotheque"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 addopts = "--strict-markers -ra"
-testpaths = ["comptes", "referentiel", "productions", "tests"]
+testpaths = ["comptes", "referentiel", "productions", "bibliotheque", "tests"]
 
 [tool.coverage.run]
 source = ["."]

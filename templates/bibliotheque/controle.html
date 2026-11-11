@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load sigaps_formats %}
+{% block titre %}Contrôle — {{ production.titre|truncatechars:50 }}{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm">{% if production.statut == "ARCHIVE" or production.statut == "RETIRE" %}<a href="{% url 'bibliotheque:catalogue' %}">← Catalogue</a>{% else %}<a href="{% url 'bibliotheque:a_controler' %}">← Travaux à contrôler</a>{% endif %}</p>
+<div class="mb-1 flex flex-wrap items-center gap-2 text-xs">
+  <span class="badge badge-neutre">{{ production.get_type_production_display }}</span>
+  {% include "composants/badge_statut.html" with production=production %}
+  {% if production.cote %}<span class="badge badge-accent">Cote {{ production.cote }}</span>{% endif %}
+</div>
+<h1 class="titre-page mb-4">{{ production.titre }}</h1>
+
+{% include "productions/_motif.html" %}
+{% if production.statut == "RETIRE" %}
+<div class="alerte alerte-erreur" role="note">
+  <p class="font-semibold">Travail retiré le {{ production.date_retrait|date:"j F Y" }}</p>
+  <p class="mt-1 whitespace-pre-line">{{ production.motif_retrait }}</p>
+</div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <section class="carte" aria-labelledby="titre-document">
+      <h2 id="titre-document" class="mb-2 text-lg font-semibold text-nuit-900">Document</h2>
+      {% if version %}
+      <p>Version {{ version.numero }} — {{ version.nom_original }} ({{ version.taille|taille }}), déposée le {{ version.date_depot|date:"j F Y à H:i" }}.</p>
+      <p class="mt-1 text-sm text-gris-600">Empreinte SHA-256 : <code class="break-all">{{ version.empreinte_sha256 }}</code></p>
+      {% if version.note_corrections %}<p class="mt-2 whitespace-pre-line text-gris-800"><span class="font-semibold">Corrections indiquées par l'auteur :</span> {{ version.note_corrections }}</p>{% endif %}
+      <p class="mt-3">{% url 'productions:telecharger' production.pk version.numero as url_pdf %}{% include "composants/bouton.html" with url=url_pdf libelle="Ouvrir le PDF" variante="secondaire" %}</p>
+      {% endif %}
+    </section>
+
+    {% if est_auteur %}
+    <p class="alerte alerte-info">Vous êtes l'auteur de ce travail : un autre bibliothécaire doit le traiter.</p>
+    {% elif production.statut == "VALIDE" %}
+    <section class="carte" aria-labelledby="titre-archiver">
+      <h2 id="titre-archiver" class="mb-2 text-lg font-semibold text-nuit-900">Archiver</h2>
+      <p class="mb-3 text-gris-800">Le document et les métadonnées sont conformes. Une cote définitive sera attribuée, de la forme {{ production.code_type }}-{{ production.date_soutenance.year|default:"AAAA" }}-0001 (année de soutenance).</p>
+      {% if not production.date_soutenance %}<p class="alerte alerte-erreur mb-3">La date de soutenance manque : <a href="{% url 'bibliotheque:metadonnees' production.pk %}">renseignez-la</a> avant d'archiver.</p>{% endif %}
+      {% with form=formulaires.archiver %}
+      {% if actif == "archiver" %}{% include "composants/erreurs_formulaire.html" %}{% endif %}
+      <form method="post" novalidate data-confirmation="Archiver ce travail ? Une cote définitive lui sera attribuée." data-confirmation-bouton="Archiver">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="archiver">
+        {% include "composants/champ.html" with champ=form.niveau_acces %}
+        {% include "composants/champ.html" with champ=form.date_fin_embargo %}
+        {% include "composants/bouton.html" with libelle="Archiver" %}
+      </form>
+      {% endwith %}
+    </section>
+
+    <section class="carte" aria-labelledby="titre-corrections">
+      <h2 id="titre-corrections" class="mb-2 text-lg font-semibold text-nuit-900">Demander des corrections</h2>
+      {% with form=formulaires.corrections %}
+      {% if actif == "corrections" %}{% include "composants/erreurs_formulaire.html" %}{% endif %}
+      <form method="post" novalidate data-confirmation="Renvoyer ce travail à son auteur pour corrections ?" data-confirmation-bouton="Demander les corrections">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="corrections">
+        {% include "composants/champ.html" with champ=form.motif %}
+        {% include "composants/bouton.html" with libelle="Demander des corrections" variante="secondaire" %}
+      </form>
+      {% endwith %}
+    </section>
+    {% elif production.statut == "A_CORRIGER_BIBLIOTHEQUE" %}
+    <p class="alerte alerte-info">En attente de la version corrigée de l'auteur. Le travail reviendra ensuite dans « À contrôler ».</p>
+    {% elif production.statut == "ARCHIVE" %}
+    <section class="carte" aria-labelledby="titre-acces">
+      <h2 id="titre-acces" class="mb-2 text-lg font-semibold text-nuit-900">Niveau d'accès</h2>
+      {% with form=formulaires.acces %}
+      {% if actif == "acces" %}{% include "composants/erreurs_formulaire.html" %}{% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="acces">
+        {% include "composants/champ.html" with champ=form.niveau_acces %}
+        {% include "composants/champ.html" with champ=form.date_fin_embargo %}
+        {% include "composants/bouton.html" with libelle="Enregistrer l'accès" %}
+      </form>
+      {% endwith %}
+    </section>
+
+    <section class="carte" aria-labelledby="titre-retrait">
+      <h2 id="titre-retrait" class="mb-2 text-lg font-semibold text-nuit-900">Retirer du catalogue</h2>
+      {% with form=formulaires.retirer %}
+      {% if actif == "retirer" %}{% include "composants/erreurs_formulaire.html" %}{% endif %}
+      <form method="post" novalidate data-confirmation="Retirer définitivement « {{ production.titre }} » ? La fiche ne sera plus publique." data-confirmation-bouton="Retirer">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="retirer">
+        {% include "composants/champ.html" with champ=form.motif %}
+        {% include "composants/bouton.html" with libelle="Retirer" variante="danger" %}
+      </form>
+      {% endwith %}
+    </section>
+    {% endif %}
+
+    <section aria-labelledby="titre-verifications">
+      <h2 id="titre-verifications" class="mb-2 text-lg font-semibold text-nuit-900">Contrôles de la bibliothèque</h2>
+      {% if verifications %}
+      <ol class="space-y-3">
+        {% for v in verifications %}
+        <li class="rounded border border-gris-300 bg-white px-4 py-3">
+          <p class="font-semibold text-nuit-900">{{ v.get_decision_display }} — version {{ v.version.numero }}</p>
+          <p class="text-sm text-gris-600">{{ v.bibliothecaire|default:"Compte supprimé" }}, le {{ v.date|date:"j F Y à H:i" }}</p>
+          {% if v.motif %}<p class="mt-1 whitespace-pre-line">{{ v.motif }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      {% include "composants/etat_vide.html" with titre="Aucun contrôle pour l'instant" %}
+      {% endif %}
+    </section>
+
+    <section aria-labelledby="titre-avis">
+      <h2 id="titre-avis" class="mb-2 text-lg font-semibold text-nuit-900">Avis des encadrants</h2>
+      {% include "productions/_avis.html" %}
+    </section>
+  </div>
+
+  <div class="space-y-6">
+    <section class="carte" aria-labelledby="titre-infos">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="titre-infos" class="text-lg font-semibold text-nuit-900">Métadonnées</h2>
+        {% if metadonnees_modifiables and not est_auteur %}<a href="{% url 'bibliotheque:metadonnees' production.pk %}" class="bouton bouton-discret">Modifier</a>{% endif %}
+      </div>
+      {% include "productions/_recapitulatif.html" %}
+    </section>
+    {% if production.cote %}
+    <section class="carte" aria-labelledby="titre-archivage">
+      <h2 id="titre-archivage" class="mb-3 text-lg font-semibold text-nuit-900">Archivage</h2>
+      {% include "productions/_archivage.html" %}
+    </section>
+    {% endif %}
+    <section aria-labelledby="titre-versions">
+      <h2 id="titre-versions" class="mb-2 text-lg font-semibold text-nuit-900">Toutes les versions</h2>
+      {% include "productions/_versions.html" %}
+    </section>
+  </div>
+</div>
+{% endblock %}
