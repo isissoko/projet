@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from django.core import mail
 from django.db import IntegrityError, transaction
@@ -356,3 +358,15 @@ def test_administrateur_ne_peut_pas_se_desactiver(admin_connecte):
     assert admin.is_active
     with pytest.raises(ActionInterdite):
         changer_activation(admin, admin, False)
+
+
+def test_formulaire_de_modification_prerempli(admin_connecte):
+    client, _ = admin_connecte
+    profil = ProfilEtudiantFactory(
+        matricule="MAT-PRE", utilisateur__first_name="Aïssata", utilisateur__email="a@sigaps.test"
+    )
+    contenu = client.get(reverse("comptes:modifier", args=[profil.utilisateur.pk])).content.decode()
+    assert 'value="Aïssata"' in contenu
+    assert 'value="a@sigaps.test"' in contenu
+    assert 'value="MAT-PRE"' in contenu
+    assert re.search(r'<input[^>]*value="ETUDIANT"[^>]*checked', contenu)

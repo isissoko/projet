@@ -80,7 +80,8 @@ class CompteForm(forms.Form):
     def __init__(self, *args, utilisateur: Utilisateur | None = None, **kwargs):
         self.utilisateur = utilisateur
         if utilisateur is not None:
-            kwargs.setdefault("initial", self.valeurs_initiales(utilisateur))
+            # FormView transmet toujours initial={} : on fusionne au lieu de setdefault.
+            kwargs["initial"] = {**self.valeurs_initiales(utilisateur), **kwargs.get("initial", {})}
         super().__init__(*args, **kwargs)
         # Seuls les éléments actifs sont proposés, plus la valeur actuelle du compte modifié.
         initial = self.initial
