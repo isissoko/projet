@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    AvisEncadrement,
     Contributeur,
     Contribution,
     Encadrement,
@@ -104,3 +105,21 @@ class EncadrementAdmin(admin.ModelAdmin):
     list_display = ("production", "enseignant", "role")
     list_filter = ("role",)
     raw_id_fields = ("production", "enseignant")
+
+
+@admin.register(AvisEncadrement)
+class AvisEncadrementAdmin(admin.ModelAdmin):
+    """Historique en lecture seule : un avis n'est ni modifié ni supprimé."""
+
+    list_display = ("production", "encadrement", "version", "avis", "date")
+    list_filter = ("avis",)
+    search_fields = ("production__titre",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

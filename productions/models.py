@@ -277,6 +277,11 @@ class VersionDocument(models.Model):
         related_name="versions_deposees",
         verbose_name="déposée par",
     )
+    note_corrections = models.TextField(
+        "note de corrections",
+        blank=True,
+        help_text="Ce que l'auteur a corrigé dans cette version (version corrigée).",
+    )
 
     objects = VersionDocumentQuerySet.as_manager()
 
@@ -425,3 +430,67 @@ class Encadrement(models.Model):
 
     def __str__(self):
         return f"{self.enseignant.utilisateur} ({self.get_role_display()})"
+
+
+# Avis d'encadrement -------------------------------------------------------------------
+
+
+class Avis(models.TextChoices):
+    FAVORABLE = "FAVORABLE", "Favorable"
+    CORRECTIONS_DEMANDEES = "CORRECTIONS_DEMANDEES", "Corrections demandées"
+    DEFAVORABLE = "DEFAVORABLE", "Défavorable"
+
+
+class AvisEncadrementQuerySet(models.QuerySet):
+    def delete(self):
+        raise SuppressionInterdite("Les avis d'encadrement ne sont jamais supprimés.")
+
+    delete.queryset_only = True
+
+
+class AvisEncadrement(models.Model):
+    """Historique des avis. Seul l'avis du directeur change le statut (RG02)."""
+
+    production = models.ForeignKey(
+        Production, on_delete=models.PROTECT, related_name="avis", verbose_name="production"
+    )
+    encadrement = models.ForeignKey(
+        Encadrement, on_delete=models.PROTECT, related_name="avis", verbose_name="encadrant"
+    )
+    version = models.ForeignKey(
+        VersionDocument,
+        on_delete=models.PROTECT,
+        related_name="avis",
+        verbose_name="version évaluée",
+    )
+    avis = models.CharField("avis", max_length=25, choices=Avis.choices)
+    commentaire = models.TextField("commentaire", blank=True)
+    date = models.DateTimeField("date", auto_now_add=True)
+
+    objects = AvisEncadrementQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "avis d'encadrement"
+        verbose_name_plural = "avis d'encadrement"
+        ordering = ["-date", "-id"]
+        constraints = [
+            # RG07 : motif obligatoire pour demander des corrections ou rejeter.
+            models.CheckConstraint(
+                condition=Q(avis=Avis.FAVORABLE) | Q(commentaire__regex=r"\S"),
+                name="avis_motif_obligatoire_sauf_favorable",
+            ),
+            models.CheckConstraint(condition=Q(avis__in=Avis.values), name="avis_valeur_valide"),
+            models.UniqueConstraint(
+                fields=["encadrement", "version"], name="avis_un_seul_par_encadrant_et_version"
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.get_avis_display()} — {self.encadrement}"
+
+    def delete(self, *args, **kwargs):
+        raise SuppressionInterdite("Les avis d'encadrement ne sont jamais supprimés.")
+
+    @property
+    def est_du_directeur(self) -> bool:
+        return self.encadrement.role == RoleEncadrement.DIRECTEUR
