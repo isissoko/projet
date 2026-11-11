@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titre %}Mes dépôts{% endblock %}
+{% block contenu %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <h1 class="titre-page">Mes dépôts</h1>
+  {% url 'productions:nouveau' as url_nouveau %}{% include "composants/bouton.html" with url=url_nouveau libelle="Nouveau dépôt" %}
+</div>
+{% if productions %}
+<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for p in productions %}
+  <li>{% url 'productions:detail' p.pk as url_detail %}{% include "composants/carte_production.html" with production=p url=url_detail %}</li>
+  {% endfor %}
+</ul>
+{% include "composants/pagination.html" %}
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun dépôt pour l'instant" message="Déposez votre mémoire ou votre thèse en quelques étapes." url_action=url_nouveau libelle_action="Commencer un dépôt" %}
+{% endif %}
+{% endblock %}

@@ -171,6 +171,63 @@
   .etat-vide {
     @apply rounded-lg border border-dashed border-gris-300 bg-white px-4 py-10 text-center;
   }
+  /* Barre de progression du dépôt */
+  .progression {
+    @apply grid grid-cols-5 gap-1 text-xs sm:text-sm;
+  }
+  .progression > li > a,
+  .progression > li > span {
+    @apply flex flex-col items-center gap-1 border-t-4 border-gris-300 pt-2 text-center
+      text-gris-600 no-underline;
+  }
+  .progression-numero {
+    @apply flex size-7 items-center justify-center rounded-full bg-gris-100 font-semibold;
+  }
+  .progression-faite > a,
+  .progression-faite > span {
+    @apply border-nuit-500 text-nuit-800;
+  }
+  .progression-faite .progression-numero {
+    @apply bg-nuit-100 text-nuit-900;
+  }
+  .progression-courante > span {
+    @apply border-accent-500 font-semibold text-nuit-900;
+  }
+  .progression-courante .progression-numero {
+    @apply bg-accent-500 text-white;
+  }
+  .progression-libelle {
+    @apply hidden sm:inline;
+  }
+
+  /* Chronologie */
+  .chronologie {
+    @apply relative space-y-4 border-l-2 border-gris-300 pl-4;
+  }
+  .chronologie > li {
+    @apply relative;
+  }
+  .chronologie > li::before {
+    @apply absolute top-1.5 -left-[1.4rem] size-3 rounded-full border-2 border-white bg-nuit-500
+      content-[''];
+  }
+
+  /* Récapitulatif (liste de définitions) */
+  .recap {
+    @apply grid gap-x-6 gap-y-3 sm:grid-cols-2;
+  }
+  .recap dt {
+    @apply text-sm font-semibold text-gris-600;
+  }
+  .recap dd {
+    @apply text-gris-800;
+  }
+
+  /* Longues listes de cases à cocher (mots-clés) */
+  .liste-choix .champ-choix {
+    @apply max-h-60 overflow-y-auto rounded-md border border-gris-300 p-3;
+  }
+
   .modale {
     @apply m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-gris-300 p-6 shadow-xl
       backdrop:bg-nuit-900/50;

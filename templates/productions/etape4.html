@@ -1,0 +1,17 @@
+{% extends "productions/base_etape.html" %}
+{% load sigaps_formats %}
+{% block etape %}
+{% include "productions/_manquants.html" %}
+<section class="carte" aria-labelledby="titre-recap">
+  <h2 id="titre-recap" class="mb-3 text-lg font-semibold text-nuit-900">Récapitulatif</h2>
+  {% include "productions/_recapitulatif.html" %}
+  <h3 class="mt-4 mb-1 font-semibold text-nuit-900">Fichier</h3>
+  {% if version %}
+  <p>Version {{ version.numero }} — {{ version.nom_original }} ({{ version.taille|taille }}), déposée le {{ version.date_depot|date:"j F Y" }}.</p>
+  {% else %}<p>Aucun fichier.</p>{% endif %}
+</section>
+<div class="mt-6 flex flex-wrap gap-3">
+  {% include "composants/bouton.html" with url=etapes.2.url libelle="← Précédent" variante="secondaire" %}
+  {% include "composants/bouton.html" with url=etapes.4.url libelle="Continuer vers la soumission" %}
+</div>
+{% endblock %}

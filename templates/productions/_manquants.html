@@ -1,0 +1,12 @@
+{% if manquants %}
+<div class="alerte alerte-erreur" role="alert">
+  <p class="font-semibold">Avant de soumettre, il manque :</p>
+  <ul class="mt-1 list-disc pl-5">
+    {% for m in manquants %}
+    <li>{{ m.message|capfirst }}{% if production %} — <a href="{% for e in etapes %}{% if e.numero == m.etape %}{{ e.url }}{% endif %}{% endfor %}">compléter (étape {{ m.etape }})</a>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<p class="alerte alerte-info">Le dépôt est complet : vous pouvez le soumettre.</p>
+{% endif %}

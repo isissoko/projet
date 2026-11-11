@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titre %}{{ titre_etape }} — Dépôt{% endblock %}
+{% block contenu %}
+<p class="mb-2 text-sm"><a href="{% if production %}{% url 'productions:detail' production.pk %}{% else %}{% url 'productions:mes_depots' %}{% endif %}">← {% if production %}Retour au dépôt{% else %}Mes dépôts{% endif %}</a></p>
+<h1 class="titre-page mb-1">{% if production %}{{ production.titre }}{% else %}Nouveau dépôt{% endif %}</h1>
+<p class="mb-4 text-gris-600">{{ titre_etape }}</p>
+{% include "composants/progression_depot.html" %}
+{% block etape %}{% endblock %}
+{% endblock %}

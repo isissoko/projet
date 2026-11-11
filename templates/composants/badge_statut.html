@@ -1,0 +1,7 @@
+{% comment %}
+Badge de statut, composant unique. Usage : {% include "composants/badge_statut.html" with production=p %}
+Une couleur par statut ; le libellé reste toujours écrit (la couleur n'est jamais la seule information).
+{% endcomment %}
+{% with s=production.statut %}
+<span class="badge {% if s == 'BROUILLON' %}bg-gris-100 text-gris-800{% elif s == 'SOUMIS' %}bg-nuit-100 text-nuit-900{% elif s == 'A_CORRIGER_ENCADREUR' or s == 'A_CORRIGER_BIBLIOTHEQUE' %}bg-accent-100 text-accent-700{% elif s == 'VALIDE' %}bg-teal-100 text-teal-900{% elif s == 'ARCHIVE' %}bg-green-100 text-green-900{% elif s == 'REJETE' %}bg-red-100 text-red-900{% elif s == 'RETIRE' %}bg-gris-300 text-gris-800 line-through decoration-1{% endif %}">{{ production.get_statut_display }}</span>
+{% endwith %}

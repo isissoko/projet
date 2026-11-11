@@ -1,0 +1,16 @@
+{% extends "productions/base_etape.html" %}
+{% block etape %}
+{% include "productions/_manquants.html" %}
+<section class="carte max-w-2xl" aria-labelledby="titre-soumission">
+  <h2 id="titre-soumission" class="mb-2 text-lg font-semibold text-nuit-900">Soumettre à votre directeur</h2>
+  <p class="text-gris-800">Après la soumission, le dépôt ne pourra plus être modifié. Votre directeur l'évaluera et pourra le valider, demander des corrections ou le rejeter.</p>
+  <form method="post" class="mt-4"
+        {% if not manquants %}data-confirmation="Soumettre « {{ production.titre }} » à votre directeur ? Vous ne pourrez plus le modifier." data-confirmation-bouton="Soumettre"{% endif %}>
+    {% csrf_token %}
+    <button type="submit" class="bouton bouton-principal"{% if manquants %} disabled aria-disabled="true"{% endif %}>Soumettre le travail</button>
+  </form>
+</section>
+<div class="mt-6">
+  {% include "composants/bouton.html" with url=etapes.3.url libelle="← Précédent" variante="secondaire" %}
+</div>
+{% endblock %}

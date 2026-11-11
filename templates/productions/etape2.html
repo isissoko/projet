@@ -1,0 +1,97 @@
+{% extends "productions/base_etape.html" %}
+{% block etape %}
+<div class="grid gap-4 lg:grid-cols-2">
+  <section class="carte" aria-labelledby="titre-auteurs">
+    <h2 id="titre-auteurs" class="mb-3 text-lg font-semibold text-nuit-900">Auteurs</h2>
+    <ol class="mb-4 space-y-2">
+      {% for c in contributions %}
+      <li class="flex flex-wrap items-center justify-between gap-2 rounded border border-gris-100 px-3 py-2">
+        <span><span class="text-gris-600">{{ c.rang }}.</span> <strong>{{ c.contributeur }}</strong>
+          <span class="badge {% if c.role == 'AUTEUR_PRINCIPAL' %}badge-accent{% else %}badge-neutre{% endif %}">{{ c.get_role_display }}</span>
+          {% if c.contributeur.affiliation %}<span class="block text-sm text-gris-600">{{ c.contributeur.affiliation }}</span>{% endif %}
+        </span>
+        {% if c.role != 'AUTEUR_PRINCIPAL' %}
+        <form method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="retirer_coauteur">
+          <input type="hidden" name="contribution" value="{{ c.pk }}">
+          <button type="submit" class="bouton bouton-discret">Retirer<span class="sr-only"> {{ c.contributeur }}</span></button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+
+    <h3 class="mb-2 font-semibold text-nuit-900">Ajouter un co-auteur</h3>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="ajouter_coauteur">
+      {% if coauteur_form.non_field_errors %}<div class="alerte alerte-erreur" role="alert">{{ coauteur_form.non_field_errors }}</div>{% endif %}
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        {% include "composants/champ.html" with champ=coauteur_form.prenom %}
+        {% include "composants/champ.html" with champ=coauteur_form.nom %}
+      </div>
+      {% include "composants/champ.html" with champ=coauteur_form.affiliation %}
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        {% include "composants/champ.html" with champ=coauteur_form.orcid %}
+        {% include "composants/champ.html" with champ=coauteur_form.email %}
+      </div>
+      {% include "composants/bouton.html" with libelle="Ajouter le co-auteur" variante="secondaire" %}
+    </form>
+  </section>
+
+  <section class="carte" aria-labelledby="titre-encadrants">
+    <h2 id="titre-encadrants" class="mb-1 text-lg font-semibold text-nuit-900">Encadrants</h2>
+    <p class="mb-3 champ-aide">Un directeur obligatoire ; co-directeurs facultatifs.</p>
+    {% if encadrements %}
+    <ul class="mb-4 space-y-2">
+      {% for e in encadrements %}
+      <li class="flex flex-wrap items-center justify-between gap-2 rounded border border-gris-100 px-3 py-2">
+        <span><strong>{{ e.enseignant.utilisateur }}</strong>
+          <span class="badge {% if e.role == 'DIRECTEUR' %}badge-accent{% else %}badge-neutre{% endif %}">{{ e.get_role_display }}</span>
+          <span class="block text-sm text-gris-600">{{ e.enseignant.get_grade_display }}{% if e.enseignant.specialite %} · {{ e.enseignant.specialite }}{% endif %}</span>
+        </span>
+        <form method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="retirer_encadrant">
+          <input type="hidden" name="encadrement" value="{{ e.pk }}">
+          <button type="submit" class="bouton bouton-discret">Retirer<span class="sr-only"> {{ e.enseignant.utilisateur }}</span></button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="alerte alerte-info">Aucun encadrant pour l'instant.</p>
+    {% endif %}
+
+    <form method="get" role="search" aria-label="Rechercher un enseignant" class="flex flex-wrap items-end gap-3">
+      <div class="flex-1">{% include "composants/champ.html" with champ=recherche.q %}</div>
+      <div class="mb-4">{% include "composants/bouton.html" with libelle="Rechercher" variante="secondaire" %}</div>
+    </form>
+
+    {% if recherche.is_bound %}
+    {% if resultats %}
+    <ul class="space-y-2" aria-label="Résultats de la recherche">
+      {% for ens in resultats %}
+      <li class="rounded border border-gris-100 px-3 py-2">
+        <p><strong>{{ ens.utilisateur }}</strong> <span class="text-sm text-gris-600">— {{ ens.get_grade_display }}, {{ ens.departement }}</span></p>
+        <form method="post" class="mt-2 flex flex-wrap gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="ajouter_encadrant">
+          <input type="hidden" name="enseignant" value="{{ ens.pk }}">
+          {% if not a_un_directeur %}<button type="submit" name="role" value="DIRECTEUR" class="bouton bouton-secondaire">Ajouter comme directeur<span class="sr-only"> : {{ ens.utilisateur }}</span></button>{% endif %}
+          <button type="submit" name="role" value="CO_DIRECTEUR" class="bouton bouton-discret">Ajouter comme co-directeur<span class="sr-only"> : {{ ens.utilisateur }}</span></button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    {% include "composants/etat_vide.html" with titre="Aucun enseignant trouvé" message="Vérifiez l'orthographe du nom." %}
+    {% endif %}
+    {% endif %}
+  </section>
+</div>
+
+<div class="mt-6 flex flex-wrap gap-3">
+  {% include "composants/bouton.html" with url=etapes.0.url libelle="← Précédent" variante="secondaire" %}
+  {% include "composants/bouton.html" with url=etapes.2.url libelle="Continuer" %}
+</div>
+{% endblock %}

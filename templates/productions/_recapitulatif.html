@@ -1,0 +1,14 @@
+{% comment %}Métadonnées d'une production (récapitulatif et page de détail).{% endcomment %}
+<dl class="recap">
+  <div><dt>Type</dt><dd>{{ production.get_type_production_display }}{% if production.niveau %} — {{ production.get_niveau_display }}{% endif %}</dd></div>
+  <div><dt>Titre</dt><dd>{{ production.titre }}</dd></div>
+  <div><dt>Langue</dt><dd>{{ production.get_langue_display }}</dd></div>
+  <div><dt>Filière</dt><dd>{{ production.filiere|default:"—" }}</dd></div>
+  <div><dt>Année académique</dt><dd>{{ production.annee_academique|default:"—" }}</dd></div>
+  <div><dt>Domaine</dt><dd>{{ production.domaine|default:"—" }}</dd></div>
+  <div><dt>Mots-clés</dt><dd>{% for m in mots_cles %}<span class="badge badge-neutre">{{ m }}</span> {% empty %}—{% endfor %}</dd></div>
+  <div><dt>Soutenance</dt><dd>{{ production.date_soutenance|date:"j F Y"|default:"—" }}{% if production.mention %} — {{ production.get_mention_display }}{% endif %}</dd></div>
+  <div><dt>Auteurs</dt><dd>{% for c in contributions %}{{ c.contributeur }}{% if c.role == 'AUTEUR_PRINCIPAL' %} (auteur principal){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</dd></div>
+  <div><dt>Encadrants</dt><dd>{% for e in encadrements %}{{ e.enseignant.utilisateur }} ({{ e.get_role_display|lower }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd></div>
+  <div class="sm:col-span-2"><dt>Résumé</dt><dd class="whitespace-pre-line">{{ production.resume|default:"—" }}</dd></div>
+</dl>

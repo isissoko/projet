@@ -1,0 +1,18 @@
+{% load sigaps_formats %}
+<div class="tableau-conteneur">
+  <table class="tableau">
+    <caption class="sr-only">Versions du document</caption>
+    <thead><tr><th scope="col">Version</th><th scope="col">Déposée le</th><th scope="col">Fichier</th><th scope="col">Taille</th><th scope="col">Empreinte SHA-256</th></tr></thead>
+    <tbody>
+      {% for v in versions %}
+      <tr>
+        <th scope="row">{{ v.numero }}{% if forloop.first %} <span class="badge badge-accent">courante</span>{% endif %}</th>
+        <td>{{ v.date_depot|date:"j F Y à H:i" }}</td>
+        <td class="break-all">{{ v.nom_original }}</td>
+        <td class="whitespace-nowrap">{{ v.taille|taille }}</td>
+        <td><code title="{{ v.empreinte_sha256 }}">{{ v.empreinte_abregee }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

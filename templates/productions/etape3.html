@@ -1,0 +1,28 @@
+{% extends "productions/base_etape.html" %}
+{% load static %}
+{% block etape %}
+{% include "composants/erreurs_formulaire.html" %}
+<section class="carte max-w-2xl" aria-labelledby="titre-fichier">
+  <h2 id="titre-fichier" class="mb-3 text-lg font-semibold text-nuit-900">Déposer le document</h2>
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {% include "composants/champ.html" with champ=form.fichier %}
+    <p id="apercu-fichier" class="mb-4 text-sm" aria-live="polite" hidden></p>
+    {% include "composants/bouton.html" with libelle="Envoyer le fichier" %}
+  </form>
+  {% if versions %}<p class="mt-4 champ-aide">Un nouvel envoi crée une nouvelle version ; les précédentes sont conservées.</p>{% endif %}
+</section>
+
+{% if versions %}
+<section class="mt-6" aria-labelledby="titre-versions">
+  <h2 id="titre-versions" class="mb-2 text-lg font-semibold text-nuit-900">Versions déposées</h2>
+  {% include "productions/_versions.html" %}
+</section>
+{% endif %}
+
+<div class="mt-6 flex flex-wrap gap-3">
+  {% include "composants/bouton.html" with url=etapes.1.url libelle="← Précédent" variante="secondaire" %}
+  {% if versions %}{% include "composants/bouton.html" with url=etapes.3.url libelle="Continuer" %}{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/fichier.js' %}" defer></script>{% endblock %}

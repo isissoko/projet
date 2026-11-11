@@ -1,0 +1,12 @@
+{% comment %}
+Chronologie. Paramètre : evenements (liste de {date, libelle, detail facultatif}).
+{% endcomment %}
+<ol class="chronologie">
+  {% for e in evenements %}
+  <li>
+    <time datetime="{{ e.date|date:'c' }}" class="text-sm text-gris-600">{{ e.date|date:"j F Y à H:i" }}</time>
+    <p class="font-semibold text-nuit-900">{{ e.libelle }}</p>
+    {% if e.detail %}<p class="text-sm text-gris-800">{{ e.detail }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ol>

@@ -1,0 +1,17 @@
+{% comment %}
+Barre de progression du dépôt. Paramètres : etapes (liste de {numero, libelle, url}), etape.
+Les autres étapes sont des liens lorsque le brouillon existe (url non vide).
+{% endcomment %}
+<nav aria-label="Étapes du dépôt" class="mb-6">
+  <p class="mb-2 text-sm text-gris-600">Étape {{ etape }} sur {{ etapes|length }}</p>
+  <ol class="progression">
+    {% for e in etapes %}
+    <li class="{% if e.numero == etape %}progression-courante{% elif e.numero < etape %}progression-faite{% endif %}"{% if e.numero == etape %} aria-current="step"{% endif %}>
+      {% if e.url and e.numero != etape %}<a href="{{ e.url }}">{% else %}<span>{% endif %}
+        <span class="progression-numero" aria-hidden="true">{{ e.numero }}</span>
+        <span class="progression-libelle">{{ e.libelle }}</span>
+      {% if e.url and e.numero != etape %}</a>{% else %}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>

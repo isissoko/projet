@@ -1,0 +1,11 @@
+{% comment %}
+Carte de production. Paramètres : production, url (lien de la carte).
+{% endcomment %}
+<article class="carte flex h-full flex-col gap-2">
+  <div class="flex flex-wrap items-center gap-2 text-xs">
+    <span class="badge badge-neutre">{{ production.get_type_production_display }}</span>
+    {% include "composants/badge_statut.html" with production=production %}
+  </div>
+  <h2 class="text-base font-semibold leading-snug"><a href="{{ url }}">{{ production.titre }}</a></h2>
+  <p class="mt-auto text-sm text-gris-600">Mis à jour le <time datetime="{{ production.date_modification|date:'c' }}">{{ production.date_modification|date:"j F Y" }}</time></p>
+</article>
