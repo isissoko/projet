@@ -398,3 +398,30 @@
 - La journalisation des consultations et des téléchargements (RG08) se branchera en phase 6
   sur `enregistrer_consultation` et `enregistrer_telechargement`.
 - Questions F, J, K et L de la phase 0 toujours en attente.
+
+## Hors phase — Script d'installation (13 novembre 2026)
+
+### Fait
+- **`scripts/installer.sh`** : installation complète sur une nouvelle machine. Il enchaîne :
+  - les prérequis, avec l'option `--paquets` qui installe les paquets par `apt` ;
+  - `.venv` et les dépendances ;
+  - `.env`, avec une clé secrète aléatoire et des droits 600 ;
+  - PostgreSQL, en détectant un port déjà occupé ;
+  - les migrations, le CSS et `manage.py check` ;
+  - les comptes (administrateur interactif, ou `--demo`) ;
+  - le lancement du serveur.
+
+  Le script peut être relancé, et il utilise `sudo docker` si l'utilisateur n'est pas dans
+  le groupe docker. Il a été testé sur une copie neuve du projet : installation complète en
+  2 minutes, environ.
+- **`scripts/lancer.sh`** : lancement quotidien (base, migrations, CSS s'il manque, serveur ;
+  `--css` pour la recompilation continue). Cible `make demo`.
+- **`charger_demo`** : version minimale anticipée de la commande de la phase 10 : un compte
+  par rôle et un référentiel de base. Elle est idempotente et refusée si `DEBUG=False`, sauf
+  avec `--force`. Trois tests.
+- **`scripts/tailwind.sh`** : vérification de l'empreinte compatible macOS (`shasum`).
+
+### Points ouverts
+- La phase 10 enrichira `charger_demo` avec des travaux à tous les statuts.
+- Le binaire Tailwind est téléchargé depuis GitHub. Sur une machine sans accès à GitHub, il
+  faut copier `bin/tailwindcss-v4.3.3` à la main.

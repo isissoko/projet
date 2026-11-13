@@ -1,6 +1,6 @@
 PY := .venv/bin/python
 
-.PHONY: installer db css css-watch migrer serveur test couverture lint format
+.PHONY: installer db css css-watch migrer serveur demo test couverture lint format
 
 installer:
 	python3 -m venv .venv
@@ -20,6 +20,9 @@ migrer:
 
 serveur:
 	$(PY) manage.py runserver 127.0.0.1:8001
+
+demo:
+	$(PY) manage.py charger_demo
 
 test:
 	$(PY) -m pytest

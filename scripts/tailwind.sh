@@ -27,7 +27,8 @@ if [ ! -x "$BINAIRE" ]; then
   curl -fL --retry 10 --retry-all-errors --retry-delay 3 -C - \
     -o "$TMP/tailwindcss-$CIBLE" "$BASE_URL/tailwindcss-$CIBLE"
   curl -fsSL --retry 5 --retry-all-errors -o "$TMP/sha256sums.txt" "$BASE_URL/sha256sums.txt"
-  (cd "$TMP" && grep " \(\./\)\?tailwindcss-$CIBLE\$" sha256sums.txt | sed 's# \./# #' | sha256sum -c -)
+  if command -v sha256sum >/dev/null 2>&1; then SHA=(sha256sum); else SHA=(shasum -a 256); fi
+  (cd "$TMP" && grep " \(\./\)\?tailwindcss-$CIBLE\$" sha256sums.txt | sed 's# \./# #' | "${SHA[@]}" -c -)
   install -m 0755 "$TMP/tailwindcss-$CIBLE" "$BINAIRE"
 fi
 

@@ -24,10 +24,45 @@ dans [CLAUDE.md](CLAUDE.md).
 ## Prérequis
 
 - Python 3.12 ou plus récent
-- Docker et Docker Compose (pour PostgreSQL)
+- Docker et Docker Compose v2 (pour PostgreSQL)
 - `curl` (téléchargement du binaire Tailwind)
+- Linux (x86_64, arm64) ou macOS ; sous Windows, utiliser WSL 2
 
 ## Installation
+
+### En une commande (nouvelle machine)
+
+```bash
+git clone <dépôt> sigaps && cd sigaps
+scripts/installer.sh --demo        # installe tout, crée les comptes de démo, lance le serveur
+```
+
+Le script vérifie les prérequis, crée `.venv` et installe les dépendances. Il génère `.env` avec
+une clé secrète aléatoire, démarre PostgreSQL, applique les migrations, compile le CSS, contrôle
+la configuration, crée les comptes, puis lance http://127.0.0.1:8001/. On peut le relancer sans
+risque.
+
+| Option | Effet |
+|---|---|
+| `--paquets` | installe d'abord Python, curl, git et Docker avec `apt` (Debian, Ubuntu ; demande sudo) |
+| `--demo` | crée un compte par rôle (`charger_demo`, mot de passe `Sigaps2026!`) au lieu de demander un administrateur |
+| `--sans-lancer` | s'arrête après l'installation |
+| `--port 8002` | port du serveur de développement |
+
+Ensuite, pour travailler au quotidien : `scripts/lancer.sh`. Il démarre la base, applique les
+migrations en attente et lance le serveur ; avec `--css`, il recompile aussi le CSS en continu.
+
+Comptes créés par `--demo`, ou par `manage.py charger_demo`, refusé si `DEBUG=False`. Ils
+n'existent que pour le développement et la démonstration :
+
+| Rôle | E-mail |
+|---|---|
+| Administrateur | `admin@sigaps.local` |
+| Bibliothécaire | `bibliothecaire@sigaps.local` |
+| Enseignants | `enseignant@sigaps.local`, `enseignant2@sigaps.local` |
+| Étudiants | `etudiant@sigaps.local`, `etudiant2@sigaps.local` |
+
+### Étape par étape
 
 ```bash
 make installer              # crée .venv et installe requirements/dev.txt
@@ -42,7 +77,9 @@ make serveur                # http://127.0.0.1:8001
 Pendant le développement de l'interface, `make css-watch` recompile le CSS à chaque modification.
 
 > Les ports 5432 et 8000 étant souvent occupés, PostgreSQL est exposé sur **5433** et le serveur
-> de développement sur **8001**. Adapter `DATABASE_URL` dans `.env` si besoin.
+> de développement sur **8001**. Si 5433 est pris, le script s'arrête avec un message. Changer
+> alors le port dans `docker-compose.yml` et dans `DATABASE_URL` (`.env`).
+> Trop d'échecs de connexion bloquent un compte 30 minutes : `manage.py axes_reset` le débloque.
 
 ## Commandes utiles
 
