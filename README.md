@@ -15,7 +15,8 @@ Node.js), templates Django.
 | 2 | Dépôt : modèles, validation PDF, versions, automate, dépôt en étapes | ✅ terminée |
 | 3 | Évaluation par l'encadreur, version corrigée, téléchargement contrôlé | ✅ terminée |
 | 4 | Contrôle bibliothèque, cote, archivage, niveaux d'accès et embargo, retrait | ✅ terminée |
-| 5 → 10 | Recherche, journal, statistiques, import, annotations, durcissement | à venir |
+| 5 | Recherche plein texte, accueil, fiche publique, téléchargement | ✅ terminée |
+| 6 → 10 | Journal, notifications, statistiques, import, annotations, durcissement | à venir |
 
 Le détail des décisions se trouve dans [docs/JOURNAL.md](docs/JOURNAL.md) ; le cahier des charges
 dans [CLAUDE.md](CLAUDE.md).
@@ -32,7 +33,7 @@ dans [CLAUDE.md](CLAUDE.md).
 make installer              # crée .venv et installe requirements/dev.txt
 cp .env.example .env        # puis renseigner SECRET_KEY
 make db                     # démarre PostgreSQL (port 5433 sur la machine)
-make migrer                 # applique les migrations
+make migrer                 # applique les migrations (crée l'extension unaccent)
 make css                    # télécharge Tailwind v4 (une fois) et compile static/css/sigaps.css
 .venv/bin/python manage.py creer_admin       # premier administrateur (interactif)
 make serveur                # http://127.0.0.1:8001
@@ -59,6 +60,8 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
 
 | Espace | URL | Rôles |
 |---|---|---|
+| Accueil, recherche | `/`, `/recherche/` | tous, sans connexion |
+| Fiche publique d'un travail archivé | `/travaux/<id>/` | tous (404 si non archivé, sauf redirection des proches) |
 | Connexion, mot de passe oublié | `/comptes/connexion/`, `/comptes/mot-de-passe-oublie/` | tous |
 | Mes dépôts, dépôt en 5 étapes | `/depots/` | Étudiant |
 | Détail d'un dépôt | `/depots/<id>/` | auteurs, encadrants, bibliothécaires, administrateurs (sinon 404) |
@@ -129,6 +132,26 @@ Les rôles sont des groupes Django créés par migration : `ETUDIANT`, `ENSEIGNA
   retiré n'est plus visible que par ses proches et la bibliothèque (404 pour les autres) ; il
   garde sa cote.
 
+## Recherche
+
+- Seuls les travaux **archivés** sont cherchables (RG10) ; les travaux retirés disparaissent
+  des résultats.
+- **Texte libre** : recherche plein texte PostgreSQL avec la configuration
+  `french_sans_accents`, copie de `french` qui ignore aussi les accents (« education » trouve
+  « éducation », « barrages » trouve « barrage »). Les guillemets cherchent une expression
+  exacte et le signe moins exclut un mot. Les résultats sont triés par pertinence : titre,
+  mots-clés et cote pèsent le plus, puis auteurs, encadrants, filière et domaine, puis résumé.
+- **Critères avancés** : titre, auteur, encadreur (tous les mots saisis, sans tenir compte
+  des accents), année de soutenance, mot-clé, filière, type. Ils se combinent ; une valeur
+  invalide dans l'URL est ignorée.
+- **Index** : `Production.vecteur_recherche` (index GIN), recalculé à l'archivage et à chaque
+  modification des métadonnées. Après un changement de nom d'un auteur ou d'un encadrant, ou
+  après une restauration, lancer `manage.py reindexer_recherche` (option
+  `--archives-seulement`).
+- **Prérequis PostgreSQL** : la migration `productions/0004` crée l'extension `unaccent`
+  (extension « de confiance » depuis PostgreSQL 13 : le propriétaire de la base suffit) et la
+  configuration `french_sans_accents`.
+
 ## Organisation
 
 ```
@@ -137,6 +160,7 @@ comptes/           utilisateur, rôles, profils, authentification, gestion des c
 referentiel/       établissements, départements, filières, années, domaines, mots-clés
 productions/       modèles, validators.py (PDF), services.py (automate), acces.py (droits)
 bibliotheque/      vues de la bibliothèque : contrôle, archivage, catalogue, retrait
+recherche/         accueil, recherche multicritère (services.py), fiche publique
 templates/         base.html, pages, composants/ (champ, bouton, tableau, pagination…)
 static/src/        input.css (thème Tailwind via @theme)
 scripts/           tailwind.sh (téléchargement vérifié + compilation)

@@ -322,3 +322,79 @@
   (l'étudiant averti des corrections demandées par la bibliothèque) arrivent en phase 6, aux
   points d'extension marqués.
 - Questions F, J, K et L de la phase 0 toujours en attente.
+
+## Phase 5 — Recherche plein texte, fiche publique, téléchargement (13 novembre 2026)
+
+### Fait
+- **Indexation** (migration `productions/0004`) :
+  - extension `unaccent` et configuration `french_sans_accents`, qui ajoute `unaccent`
+    devant `french_stem` ;
+  - champ `Production.vecteur_recherche`, avec un index GIN.
+  - `productions/indexation.py` : `indexer`, `reindexer` et des textes pondérés : A pour le
+    titre, les mots-clés et la cote, B pour les auteurs, les encadrants, la filière et le
+    domaine, C pour le résumé.
+  - `archiver` et `modifier_metadonnees` réindexent ; commande `reindexer_recherche`.
+- **Recherche** (nouvelle application `recherche`) :
+  - `services.rechercher(Criteres)` part toujours de `productions_publiques()`, c'est-à-dire
+    des seuls travaux ARCHIVE ;
+  - texte libre `websearch` trié par `SearchRank` ;
+  - critères par sous-requêtes `Exists`, donc sans doublons ;
+  - auteurs préchargés : deux requêtes pour une page de résultats.
+  - `RechercheForm` en GET : les champs en erreur sont ignorés. Les listes proposées (années,
+    mots-clés, filières) se limitent aux valeurs présentes dans des travaux archivés.
+  - Fonctions pour l'accueil (`chiffres`, une seule requête, et `derniers_archives`) et pour
+    la fiche (`citation`).
+- **Pages** :
+  - Accueil : barre de recherche, chiffres, derniers archivés, état vide.
+  - Résultats : critères avancés dans un `<details>`, sans JavaScript ; critères actifs
+    retirables un par un ; tri ; pagination qui conserve les critères.
+  - Fiche publique `/travaux/<id>/` : métadonnées, citation, « Consulter le PDF » et
+    « Télécharger », ou la raison de l'indisponibilité, avec « Se connecter » quand l'accès
+    est restreint. Liens vers le suivi interne pour les proches et vers le catalogue pour la
+    bibliothèque.
+  - Menu « Rechercher » vers `/recherche/`. La page provisoire `pages/accueil.html` est
+    supprimée.
+- **Téléchargement** :
+  - `?telecharger=1` envoie le PDF en pièce jointe ;
+  - un travail archivé est nommé par sa cote (`MEM-2026-0001.pdf`, et
+    `…-version-1.pdf` pour une version antérieure) ;
+  - point d'extension `enregistrer_consultation` pour RG08 en phase 6.
+- **Page de suivi** : un utilisateur qui n'est pas un proche et ouvre `/depots/<id>/` d'un
+  travail archivé est redirigé vers la fiche publique.
+- **Tests** : 534 au total, dont 40 nouveaux :
+  - RG10 ;
+  - chaque critère, puis combinés ;
+  - racinisation et accents ;
+  - pondération ;
+  - syntaxe invalide ;
+  - nombre de requêtes ;
+  - pages ;
+  - fiche selon les droits ;
+  - noms de fichiers.
+
+  Couverture : `services.py` 94 %, `acces.py` 99 %, `validators.py` 95 %,
+  `recherche/services.py` 99 %.
+
+### Décisions
+- **Q1 (accents)** : configuration `french_sans_accents`, plutôt que `french` seule ;
+  `unaccent` est documentée comme prérequis.
+- **Q2** : le critère « année » est l'année de soutenance, cohérente avec la cote.
+- **Q3** : fiche publique sur `/travaux/<id>/` ; `/depots/<id>/` reste la page de suivi
+  interne.
+- **Q4** : auteur et encadreur sont saisis en texte libre, et tous les mots doivent figurer
+  chez une même personne.
+- **Vecteur stocké** plutôt que colonne générée : il dépend d'autres tables. On l'indexe à
+  l'archivage, puisque seuls les travaux archivés sont cherchables.
+- **Pas de migration de données** pour remplir les vecteurs, contrairement à ce que prévoyait
+  le plan. Une migration ne peut pas réutiliser `indexation.py` sans dépendre du code
+  courant, et aucune base n'avait encore de travail archivé. La commande
+  `reindexer_recherche` couvre ce besoin et elle est documentée.
+- **Commits** : accueil, résultats et fiche publique forment un seul commit, parce qu'ils
+  partagent la même application et les mêmes routes.
+
+### Points ouverts
+- Un changement de nom dans un compte ne réindexe pas automatiquement ; il faut lancer
+  `reindexer_recherche`. La phase 8 (import) appellera `indexer`.
+- La journalisation des consultations et des téléchargements (RG08) se branchera en phase 6
+  sur `enregistrer_consultation` et `enregistrer_telechargement`.
+- Questions F, J, K et L de la phase 0 toujours en attente.
