@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "comptes",
     "productions",
     "bibliotheque",
+    "recherche",
 ]
 
 MIDDLEWARE = [
