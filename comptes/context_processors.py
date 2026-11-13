@@ -6,7 +6,7 @@ from .roles import Role
 
 # (libellé, nom d'URL, rôles autorisés ; None = tout le monde)
 ENTREES_MENU = [
-    ("Rechercher", "accueil", None),
+    ("Rechercher", "recherche:resultats", None),
     ("Mes dépôts", "productions:mes_depots", {Role.ETUDIANT}),
     ("Travaux à évaluer", "evaluation:liste", {Role.ENSEIGNANT}),
     ("À contrôler", "bibliotheque:a_controler", {Role.BIBLIOTHECAIRE}),

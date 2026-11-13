@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titre %}Accueil{% endblock %}
+{% block contenu %}
+<section aria-labelledby="titre-accueil" class="mb-8 space-y-3">
+  <h1 id="titre-accueil" class="text-2xl font-bold text-nuit-900 sm:text-3xl">Mémoires et thèses de l'établissement</h1>
+  <p class="max-w-prose text-gris-600">Recherchez parmi les travaux archivés par la bibliothèque et consultez-les selon leur niveau d'accès.</p>
+  {% include "recherche/_barre.html" %}
+  <p class="text-sm"><a href="{% url 'recherche:resultats' %}?filtres=1">Recherche avancée (auteur, encadreur, année, filière…)</a></p>
+</section>
+
+{% if chiffres.total %}
+<section aria-labelledby="titre-chiffres" class="mb-8">
+  <h2 id="titre-chiffres" class="sr-only">Chiffres clés</h2>
+  <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="carte"><dt class="text-sm text-gris-600">Travaux archivés</dt><dd class="text-2xl font-bold text-nuit-900">{{ chiffres.total }}</dd></div>
+    <div class="carte"><dt class="text-sm text-gris-600">Mémoires</dt><dd class="text-2xl font-bold text-nuit-900">{{ chiffres.memoires }}</dd></div>
+    <div class="carte"><dt class="text-sm text-gris-600">Thèses</dt><dd class="text-2xl font-bold text-nuit-900">{{ chiffres.theses }}</dd></div>
+    <div class="carte"><dt class="text-sm text-gris-600">Filières</dt><dd class="text-2xl font-bold text-nuit-900">{{ chiffres.filieres }}</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="titre-derniers">
+  <h2 id="titre-derniers" class="mb-3 text-lg font-semibold text-nuit-900">Derniers travaux archivés</h2>
+  <ul class="grid gap-4 sm:grid-cols-2">
+    {% for p in derniers %}<li>{% include "composants/carte_resultat.html" with production=p niveau=3 %}</li>{% endfor %}
+  </ul>
+  <p class="mt-4"><a href="{% url 'recherche:resultats' %}?tri=recent">Voir tous les travaux</a></p>
+</section>
+{% else %}
+{% include "composants/etat_vide.html" with titre="Aucun travail archivé pour l'instant" message="Les mémoires et thèses apparaîtront ici dès leur archivage par la bibliothèque." %}
+{% endif %}
+{% endblock %}

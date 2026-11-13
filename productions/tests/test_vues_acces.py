@@ -64,7 +64,7 @@ def test_ancienne_version_404_pour_le_public(connecter):
     client, _ = connecter("ETUDIANT")
     assert client.get(_url(production, 2)).status_code == 200
     assert client.get(_url(production, 1)).status_code == 404
-    contenu = client.get(_detail(production)).content.decode()
+    contenu = client.get(_detail(production), follow=True).content.decode()  # fiche publique
     assert _url(production, 2) in contenu
     assert _url(production, 1) not in contenu
     client.force_login(etudiant)
@@ -87,7 +87,10 @@ def test_fiche_archivee_pour_un_tiers(connecter):
         niveau_acces=NiveauAcces.CONFIDENTIEL, date_soutenance=datetime.date(2026, 6, 15)
     )
     client, _ = connecter("ETUDIANT")
-    contenu = client.get(_detail(production)).content.decode()
+    reponse = client.get(_detail(production))
+    assert reponse.status_code == 302
+    assert reponse.url == reverse("recherche:fiche", args=[production.pk])
+    contenu = client.get(reponse.url).content.decode()
     assert "Cote MEM-2026-0001" in contenu
     assert "Le document est confidentiel" in contenu
     assert "Chronologie" not in contenu  # historique interne réservé aux proches

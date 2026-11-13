@@ -1,0 +1,14 @@
+{% comment %}
+Carte d'un travail archivé (accueil, résultats). Paramètre : production, annotée de
+auteurs_ordonnes (recherche.services). Titre de niveau h2 par défaut, ou h3 avec niveau=3.
+{% endcomment %}
+<article class="carte flex h-full flex-col gap-2">
+  <div class="flex flex-wrap items-center gap-2 text-xs">
+    <span class="badge badge-neutre">{{ production.get_type_production_display }}</span>
+    {% if production.cote %}<span class="badge badge-accent">{{ production.cote }}</span>{% endif %}
+  </div>
+  {% if niveau == 3 %}<h3{% else %}<h2{% endif %} class="text-base font-semibold leading-snug"><a href="{% url 'recherche:fiche' production.pk %}">{{ production.titre }}</a>{% if niveau == 3 %}</h3>{% else %}</h2>{% endif %}
+  <p class="text-sm text-gris-800">{% for c in production.auteurs_ordonnes %}{{ c.contributeur }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  <p class="text-sm text-gris-600">{{ production.filiere|default:"" }}{% if production.filiere and production.date_soutenance %} — {% endif %}{% if production.date_soutenance %}soutenu en {{ production.date_soutenance|date:"Y" }}{% endif %}</p>
+  {% if production.resume and avec_resume %}<p class="text-sm text-gris-800">{{ production.resume|truncatewords:40 }}</p>{% endif %}
+</article>

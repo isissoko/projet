@@ -591,6 +591,13 @@ def motif_corrections(production) -> DemandeCorrections | None:
     return None
 
 
+def enregistrer_consultation(utilisateur, production, adresse_ip=None) -> None:
+    """Point d'extension de la phase 6.
+
+    >>> PHASE 6 : créer le JournalAction « consultation » de la fiche (RG08).
+    """
+
+
 def enregistrer_telechargement(utilisateur, version, adresse_ip=None) -> None:
     """Point d'extension de la phase 6.
 

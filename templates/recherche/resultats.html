@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titre %}{% if criteres.texte %}« {{ criteres.texte|truncatechars:40 }} » — {% endif %}Recherche{% endblock %}
+{% block contenu %}
+<h1 class="titre-page mb-4">Rechercher</h1>
+
+<form method="get" role="search" aria-label="Rechercher un mémoire ou une thèse" class="mb-4 space-y-3">
+  <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+    <div class="champ flex-1">
+      <label for="{{ form.q.id_for_label }}" class="champ-libelle">{{ form.q.label }}</label>
+      {{ form.q }}
+      <p id="{{ form.q.auto_id }}_helptext" class="champ-aide">{{ form.q.help_text }}</p>
+    </div>
+  </div>
+  <details class="carte"{% if filtres_ouverts or request.GET.filtres %} open{% endif %}>
+    <summary class="cursor-pointer font-semibold text-nuit-900">Critères avancés</summary>
+    <div class="mt-3 grid gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% include "composants/champ.html" with champ=form.titre %}
+      {% include "composants/champ.html" with champ=form.auteur %}
+      {% include "composants/champ.html" with champ=form.encadreur %}
+      {% include "composants/champ.html" with champ=form.annee %}
+      {% include "composants/champ.html" with champ=form.mot_cle %}
+      {% include "composants/champ.html" with champ=form.filiere %}
+      {% include "composants/champ.html" with champ=form.type %}
+    </div>
+  </details>
+  <div class="flex flex-wrap items-end gap-3">
+    {% include "composants/champ.html" with champ=form.tri %}
+    {% include "composants/bouton.html" with libelle="Rechercher" %}
+  </div>
+</form>
+
+<section aria-labelledby="titre-resultats">
+  <h2 id="titre-resultats" class="mb-2 text-lg font-semibold text-nuit-900" aria-live="polite">{{ paginator.count }} résultat{{ paginator.count|pluralize }}</h2>
+  {% if actifs %}
+  <ul class="mb-4 flex flex-wrap gap-2 text-sm" aria-label="Critères actifs">
+    {% for a in actifs %}
+    <li><a href="?{{ a.parametres }}" class="badge badge-neutre no-underline">{{ a.libelle }} : {{ a.valeur }} <span aria-hidden="true">×</span><span class="sr-only"> (retirer ce critère)</span></a></li>
+    {% endfor %}
+    <li><a href="{% url 'recherche:resultats' %}">Tout effacer</a></li>
+  </ul>
+  {% endif %}
+
+  {% if resultats %}
+  <ul class="grid gap-4">
+    {% for p in resultats %}<li>{% include "composants/carte_resultat.html" with production=p niveau=3 avec_resume=True %}</li>{% endfor %}
+  </ul>
+  {% include "composants/pagination.html" %}
+  {% else %}
+  {% include "composants/etat_vide.html" with titre="Aucun travail ne correspond à votre recherche" message="Vérifiez l'orthographe, utilisez moins de mots ou retirez des critères." %}
+  {% endif %}
+</section>
+{% endblock %}

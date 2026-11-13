@@ -146,3 +146,32 @@ def annees_disponibles() -> list[int]:
         .distinct()
         .order_by("-date_soutenance__year")
     )
+
+
+# Fiche ---------------------------------------------------------------------------------
+
+
+def citation(production) -> str:
+    """Référence bibliographique simple : Auteurs (année). Titre. Type, filière,
+    établissement. Cote."""
+    production = production.specifique()
+    auteurs = ", ".join(
+        f"{c.contributeur.nom.upper()} {c.contributeur.prenom}".strip()
+        for c in production.contributions.select_related("contributeur").order_by("rang")
+    )
+    annee = production.date_soutenance.year if production.date_soutenance else "s. d."
+    nature = production.get_type_production_display()
+    niveau = getattr(production, "niveau", "")
+    if niveau:
+        nature += f" de {production.get_niveau_display()}"
+    morceaux = [nature]
+    if production.filiere_id:
+        filiere = production.filiere
+        morceaux.append(filiere.libelle)
+        etablissement = filiere.departement.etablissement if filiere.departement_id else None
+        if etablissement is not None:
+            morceaux.append(etablissement.nom)
+    reference = f"{auteurs} ({annee}). {production.titre}. {', '.join(morceaux)}."
+    if production.cote:
+        reference += f" Cote {production.cote}."
+    return reference

@@ -1,0 +1,9 @@
+{% comment %}Barre de recherche principale. Paramètre : form.{% endcomment %}
+<form method="get" action="{% url 'recherche:resultats' %}" role="search" aria-label="Rechercher un mémoire ou une thèse" class="flex flex-col gap-2 sm:flex-row sm:items-start">
+  <div class="champ flex-1">
+    <label for="{{ form.q.id_for_label }}" class="sr-only">{{ form.q.label }}</label>
+    {{ form.q }}
+    <p id="{{ form.q.auto_id }}_helptext" class="sr-only">{{ form.q.help_text }}</p>
+  </div>
+  {% include "composants/bouton.html" with libelle="Rechercher" %}
+</form>

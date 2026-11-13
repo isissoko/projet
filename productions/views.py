@@ -121,6 +121,12 @@ def chronologie(production) -> list[dict]:
 class DepotDetailView(LoginRequiredMixin, TemplateView):
     template_name = "productions/detail.html"
 
+    def get(self, request, *args, **kwargs):
+        production = obtenir_production_visible(request.user, kwargs["pk"])
+        if production.est_archive and not acces.est_proche(request.user, production):
+            return redirect("recherche:fiche", pk=production.pk)  # fiche publique
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         user = self.request.user
         production = obtenir_production_visible(user, kwargs["pk"])
@@ -447,6 +453,17 @@ class VersionCorrigeeView(LoginRequiredMixin, FormView):
         return redirect("productions:detail", pk=self.production.pk)
 
 
+def nom_de_fichier(production, version) -> str:
+    """Nom proposé au navigateur : la cote pour un travail archivé (MEM-2026-0001.pdf),
+    sinon le nom d'origine du fichier."""
+    if production.cote:
+        courante = production.version_courante()
+        if courante is not None and courante.pk == version.pk:
+            return f"{production.cote}.pdf"
+        return f"{production.cote}-version-{version.numero}.pdf"
+    return version.nom_original or f"version-{version.numero}.pdf"
+
+
 class TelechargerVersionView(View):
     """Seul point de sortie des fichiers : contrôle des droits, journalisation, envoi.
 
@@ -462,7 +479,7 @@ class TelechargerVersionView(View):
                 return redirect_to_login(request.get_full_path())
             raise Http404("Document introuvable.")
         services.enregistrer_telechargement(request.user, version, request.META.get("REMOTE_ADDR"))
-        nom = version.nom_original or f"version-{version.numero}.pdf"
+        nom = nom_de_fichier(production, version)
         if settings.X_ACCEL_REDIRECT:
             reponse = HttpResponse(content_type="application/pdf")
             reponse["X-Accel-Redirect"] = settings.X_ACCEL_PREFIXE + version.fichier.name
@@ -472,7 +489,8 @@ class TelechargerVersionView(View):
             except FileNotFoundError:
                 raise Http404("Fichier introuvable sur le serveur.") from None
             reponse = FileResponse(flux, content_type="application/pdf")
-        reponse["Content-Disposition"] = content_disposition_header(False, nom)
+        en_piece_jointe = request.GET.get("telecharger") == "1"
+        reponse["Content-Disposition"] = content_disposition_header(en_piece_jointe, nom)
         reponse["Cache-Control"] = "private, no-store"
         reponse["X-Content-Type-Options"] = "nosniff"
         return reponse
