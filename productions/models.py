@@ -8,6 +8,8 @@ réservées aux thèses).
 import re
 import uuid
 
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.core.exceptions import ValidationError
 from django.core.files.storage import storages
 from django.db import models
@@ -133,11 +135,16 @@ class Production(models.Model):
     date_archivage = models.DateTimeField("archivée le", null=True, blank=True, editable=False)
     motif_retrait = models.TextField("motif du retrait", blank=True, editable=False)
     date_retrait = models.DateTimeField("retirée le", null=True, blank=True, editable=False)
+    # Vecteur plein texte (configuration french_sans_accents), tenu à jour par
+    # productions.indexation.indexer : titre et mots-clés (A), personnes et classement (B),
+    # résumé (C).
+    vecteur_recherche = SearchVectorField("vecteur de recherche", null=True, editable=False)
 
     class Meta:
         verbose_name = "production"
         verbose_name_plural = "productions"
         ordering = ["-date_modification"]
+        indexes = [GinIndex(fields=["vecteur_recherche"], name="production_recherche_gin")]
         constraints = [
             models.CheckConstraint(
                 condition=Q(type_production__in=TypeProduction.values),

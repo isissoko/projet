@@ -49,7 +49,6 @@ class MotifForm(forms.Form):
         self.fields["motif"].help_text = aide
 
 
-
 class MetadonneesBibliothequeForm(MetadonneesForm):
     """Métadonnées corrigées par la bibliothèque (BF12) : le type ne change jamais."""
 

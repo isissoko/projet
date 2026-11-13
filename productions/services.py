@@ -16,7 +16,7 @@ from django.utils import timezone
 from comptes.exceptions import ActionInterdite
 from comptes.roles import Role
 
-from . import acces
+from . import acces, indexation
 from .models import (
     MENTIONS_MEMOIRE,
     MENTIONS_THESE,
@@ -680,9 +680,11 @@ def archiver(acteur, production, niveau_acces: str, date_fin_embargo=None) -> Pr
     production.cote = cote
     production.niveau_acces = niveau_acces
     production.date_fin_embargo = date_fin_embargo
-    return changer_statut(
+    changer_statut(
         production, Statut.ARCHIVE, acteur, f"Cote {cote}, version {version.numero} archivée."
     )
+    indexation.indexer(production)
+    return production
 
 
 @transaction.atomic
@@ -772,5 +774,6 @@ def modifier_metadonnees(acteur, production, donnees: dict, mots_cles=None) -> P
         raise ActionInterdite("Données incohérentes pour ce type de travail.") from erreur
     if mots_cles is not None:
         specifique.mots_cles.set(mots_cles)
+    indexation.indexer(specifique)
     _apres_modification(specifique, acteur, "Métadonnées modifiées par la bibliothèque.")
     return specifique
